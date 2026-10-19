@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Agendamento de Chromebooks - Escola</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,10 +12,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
   <style>
+    * { -webkit-tap-highlight-color: transparent; }
     .hour-row { height: 60px; }
     .event-card { transition: all 0.2s ease-in-out; }
     .event-card:hover { z-index: 30 !important; filter: brightness(0.95); }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
   </style>
@@ -23,64 +24,82 @@
 <body class="bg-slate-50 font-sans text-slate-800 antialiased h-screen flex flex-col overflow-hidden">
 
   <!-- TOP BAR / HEADER -->
-  <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-sm">
-    <div class="flex items-center space-x-6">
-      <div class="flex items-center space-x-3">
-        <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
-          <i class="fa-solid fa-laptop text-xl"></i>
+  <header class="bg-white border-b border-slate-200 px-3 py-2.5 md:px-6 md:py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0 shadow-sm z-20">
+    
+    <!-- Linha Superior (Logo + Status + Botão Resumo Mobile) -->
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <div class="bg-blue-600 text-white p-2 rounded-xl shadow-md flex items-center justify-center">
+          <i class="fa-solid fa-laptop text-lg md:text-xl"></i>
         </div>
         <div>
-          <h1 class="text-xl font-bold text-slate-800 leading-tight">Chromebook Agenda</h1>
-          <p class="text-xs text-slate-500 font-medium">Sistema de Agendamento Escolar</p>
+          <h1 class="text-base md:text-xl font-bold text-slate-800 leading-tight">Chromebooks</h1>
+          <p class="text-[10px] md:text-xs text-slate-500 font-medium hidden sm:block">Agendamento Escolar</p>
         </div>
       </div>
 
-      <!-- Navegação de Data -->
-      <div class="flex items-center space-x-2 pl-6 border-l border-slate-200">
-        <button id="btnToday" class="px-3.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">Hoje</button>
-        <button id="btnPrev" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"><i class="fa-solid fa-chevron-left text-xs"></i></button>
-        <button id="btnNext" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"><i class="fa-solid fa-chevron-right text-xs"></i></button>
-        <span id="currentDateDisplay" class="text-base font-bold text-slate-800 min-w-[200px] text-center">---</span>
+      <!-- Ações Rápidas Mobile -->
+      <div class="flex items-center gap-1.5 sm:hidden">
+        <button id="btnToggleSidebar" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1">
+          <i class="fa-solid fa-chart-pie text-blue-600"></i> Resumo
+        </button>
+        <button id="btnOpenNewModalMobile" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold shadow transition">
+          <i class="fa-solid fa-plus"></i> Novo
+        </button>
       </div>
     </div>
 
-    <!-- Modos de Visão e Ações -->
-    <div class="flex items-center space-x-3">
+    <!-- Navegação de Data -->
+    <div class="flex items-center justify-between sm:justify-center space-x-1 sm:space-x-2 py-1 sm:py-0 border-y sm:border-y-0 border-slate-100">
+      <button id="btnToday" class="px-2.5 py-1 md:px-3.5 md:py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">Hoje</button>
+      <div class="flex items-center">
+        <button id="btnPrev" class="p-1.5 md:p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+        <span id="currentDateDisplay" class="text-xs md:text-base font-bold text-slate-800 min-w-[130px] md:min-w-[200px] text-center truncate">---</span>
+        <button id="btnNext" class="p-1.5 md:p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+      </div>
+    </div>
+
+    <!-- Modos de Visão e Ações Desktop -->
+    <div class="flex items-center justify-between sm:justify-end space-x-2">
       <!-- Indicador do Firebase -->
-      <div id="dbStatusBadge" class="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+      <div id="dbStatusBadge" class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
         <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-        <span id="dbStatusText">Local (Sem Nuvem)</span>
+        <span id="dbStatusText">Local</span>
       </div>
 
-      <div class="bg-slate-100 p-1 rounded-xl flex space-x-1 border border-slate-200">
-        <button id="viewDay" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">Dia</button>
-        <button id="viewWeek" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">Semana</button>
-        <button id="viewList" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">Lista</button>
+      <div class="bg-slate-100 p-1 rounded-xl flex space-x-1 border border-slate-200 w-full sm:w-auto justify-center">
+        <button id="viewDay" class="flex-1 sm:flex-none px-3 py-1 text-xs font-semibold rounded-lg text-slate-600 transition">Dia</button>
+        <button id="viewWeek" class="flex-1 sm:flex-none px-3 py-1 text-xs font-semibold rounded-lg text-slate-600 transition">Semana</button>
+        <button id="viewList" class="flex-1 sm:flex-none px-3 py-1 text-xs font-semibold rounded-lg text-slate-600 transition">Lista</button>
       </div>
 
-      <button id="btnOpenConfig" class="px-3 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold text-xs transition flex items-center gap-2">
-        <i class="fa-solid fa-sliders text-blue-600"></i> Estoque (<span id="displayTotalStock">30</span>)
+      <button id="btnOpenConfig" class="px-2.5 py-1.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold text-xs transition flex items-center gap-1.5 shrink-0">
+        <i class="fa-solid fa-sliders text-blue-600"></i> <span class="hidden md:inline">Estoque</span> (<span id="displayTotalStock">30</span>)
       </button>
 
-      <button id="btnOpenNewModal" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition flex items-center gap-2">
+      <button id="btnOpenNewModal" class="hidden sm:flex px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-md transition items-center gap-1.5 shrink-0">
         <i class="fa-solid fa-plus"></i> Novo Agendamento
       </button>
     </div>
   </header>
 
   <!-- MAIN CONTENT LAYOUT -->
-  <div class="flex flex-1 overflow-hidden">
+  <div class="flex flex-1 overflow-hidden relative">
 
-    <!-- SIDEBAR -->
-    <aside class="w-72 bg-white border-r border-slate-200 p-5 flex flex-col justify-between shrink-0 overflow-y-auto">
-      <div class="space-y-6">
+    <!-- SIDEBAR (Gaveta no Mobile, Fixo no Desktop) -->
+    <aside id="sidebar" class="absolute md:relative inset-y-0 left-0 w-72 bg-white border-r border-slate-200 p-4 md:p-5 flex flex-col justify-between shrink-0 overflow-y-auto z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-xl md:shadow-none">
+      <div class="space-y-5">
+        <div class="flex items-center justify-between md:hidden pb-2 border-b border-slate-100">
+          <span class="font-bold text-sm text-slate-800">Painel de Resumo</span>
+          <button id="btnCloseSidebar" class="p-1 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-base"></i></button>
+        </div>
         
         <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Selecionar Data</label>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Selecionar Data</label>
           <input type="date" id="miniDatePicker" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold uppercase text-slate-500">Resumo do Dia</span>
             <i class="fa-solid fa-chart-pie text-blue-500"></i>
@@ -88,11 +107,11 @@
           <div class="flex justify-between items-end">
             <div>
               <p class="text-2xl font-black text-slate-800" id="statReservations">0</p>
-              <p class="text-[11px] text-slate-500">Reservas hoje</p>
+              <p class="text-[10px] text-slate-500">Reservas hoje</p>
             </div>
             <div class="text-right">
               <p class="text-2xl font-black text-blue-600" id="statPeakUsed">0/30</p>
-              <p class="text-[11px] text-slate-500">Pico em uso</p>
+              <p class="text-[10px] text-slate-500">Pico em uso</p>
             </div>
           </div>
           <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
@@ -101,19 +120,21 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Buscar</label>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Buscar</label>
           <div class="relative">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
             <input type="text" id="searchInput" placeholder="Professor, sala, turma..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
           </div>
         </div>
-
       </div>
 
       <div class="text-[11px] text-slate-400 text-center pt-4 border-t border-slate-100">
         Escola • Controle de Chromebooks
       </div>
     </aside>
+
+    <!-- Overlay da Sidebar no Mobile -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-30 hidden md:hidden"></div>
 
     <!-- CALENDAR GRID CONTAINER -->
     <main class="flex-1 overflow-auto bg-white flex flex-col relative" id="calendarContainer">
@@ -122,89 +143,89 @@
   </div>
 
   <!-- MODAL DE AGENDAMENTO -->
-  <div id="modalBooking" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 transform transition-all">
-      <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-        <h3 id="modalBookingTitle" class="text-base font-bold text-slate-800 flex items-center gap-2">
+  <div id="modalBooking" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 hidden p-0 sm:p-4">
+    <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 max-h-[92vh] sm:max-h-[90vh] flex flex-col">
+      <div class="bg-slate-50 px-4 sm:px-6 py-3.5 border-b border-slate-200 flex justify-between items-center shrink-0">
+        <h3 id="modalBookingTitle" class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
           <i class="fa-solid fa-calendar-plus text-blue-600"></i> Agendar Chromebooks
         </h3>
         <button id="btnCloseModal" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-base"></i></button>
       </div>
 
-      <form id="formBooking" class="p-6 space-y-4">
+      <form id="formBooking" class="p-4 sm:p-6 space-y-3.5 overflow-y-auto">
         <input type="hidden" id="inputEditId" value="">
 
         <div>
           <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nome do Professor *</label>
-          <input type="text" id="inputProf" required placeholder="Ex: Prof. Carlos Silva" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <input type="text" id="inputProf" required placeholder="Ex: Prof. Carlos Silva" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Sala de Aula *</label>
-            <input type="text" id="inputSala" required placeholder="Ex: Sala 08" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <input type="text" id="inputSala" required placeholder="Ex: Sala 08" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Turma *</label>
-            <input type="text" id="inputTurma" required placeholder="Ex: 9º Ano B" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <input type="text" id="inputTurma" required placeholder="Ex: 9º Ano B" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Data *</label>
-          <input type="date" id="inputDate" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <input type="date" id="inputDate" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Horário Início *</label>
-            <input type="time" id="inputStartTime" list="timeList" required step="60" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Início *</label>
+            <input type="time" id="inputStartTime" list="timeList" required step="60" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Horário Término *</label>
-            <input type="time" id="inputEndTime" list="timeList" required step="60" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Término *</label>
+            <input type="time" id="inputEndTime" list="timeList" required step="60" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
           </div>
         </div>
 
         <div>
           <div class="flex justify-between items-center mb-1">
-            <label class="block text-xs font-bold text-slate-600 uppercase">Quantidade de Chromebooks *</label>
-            <span id="stockCheckBadge" class="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Calculando...</span>
+            <label class="block text-xs font-bold text-slate-600 uppercase">Quantidade *</label>
+            <span id="stockCheckBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Calculando...</span>
           </div>
-          <input type="number" id="inputQty" min="1" required placeholder="Ex: 25" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <input type="number" id="inputQty" min="1" required placeholder="Ex: 25" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
           <label class="block text-xs font-bold text-slate-700 mb-1">PIN de Segurança (4 dígitos) *</label>
-          <p class="text-[11px] text-slate-500 mb-2">Crie uma senha numérica simples para poder alterar ou cancelar este agendamento depois.</p>
-          <input type="password" id="inputPin" maxlength="4" pattern="[0-9]{4}" required placeholder="Ex: 1234" class="w-32 px-3 py-1.5 border border-slate-300 rounded-lg text-xs text-center font-bold tracking-widest focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <p class="text-[10px] text-slate-500 mb-2">Senha para alterar/cancelar esta reserva depois.</p>
+          <input type="password" id="inputPin" maxlength="4" pattern="[0-9]{4}" required placeholder="Ex: 1234" class="w-28 px-3 py-1.5 border border-slate-300 rounded-lg text-sm text-center font-bold tracking-widest focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
         <datalist id="timeList"></datalist>
 
-        <div class="pt-3 border-t border-slate-100 flex justify-end space-x-3">
+        <div class="pt-3 border-t border-slate-100 flex justify-end space-x-2 shrink-0">
           <button type="button" id="btnCancelModal" class="px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">Cancelar</button>
-          <button type="submit" id="btnSaveBooking" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-md transition">Confirmar Agendamento</button>
+          <button type="submit" id="btnSaveBooking" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow transition">Confirmar</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- MODAL DETALHES -->
-  <div id="modalDetails" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
-      <div class="bg-blue-600 px-6 py-4 text-white flex justify-between items-center">
-        <h3 class="text-base font-bold flex items-center gap-2">
+  <div id="modalDetails" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 hidden p-0 sm:p-4">
+    <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
+      <div class="bg-blue-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
+        <h3 class="text-sm sm:text-base font-bold flex items-center gap-2">
           <i class="fa-solid fa-laptop"></i> Detalhes da Reserva
         </h3>
         <button id="btnCloseDetails" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
-      <div class="p-6 space-y-4">
-        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+      <div class="p-4 sm:p-6 space-y-4">
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
           <div class="flex justify-between items-center border-b border-slate-200 pb-2">
             <span class="text-xs text-slate-500 uppercase font-bold">Professor</span>
-            <span id="detailProf" class="text-sm font-bold text-slate-800">---</span>
+            <span id="detailProf" class="text-xs sm:text-sm font-bold text-slate-800">---</span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-xs text-slate-500 uppercase font-bold">Horário</span>
@@ -220,16 +241,16 @@
           </div>
           <div class="flex justify-between items-center pt-2 border-t border-slate-200">
             <span class="text-xs text-slate-500 uppercase font-bold">Quantidade</span>
-            <span id="detailQty" class="text-sm font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">💻 ---</span>
+            <span id="detailQty" class="text-xs sm:text-sm font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">💻 ---</span>
           </div>
         </div>
 
-        <div class="pt-2 flex justify-between items-center gap-3">
-          <button id="btnDeleteDetail" class="px-4 py-2 border border-rose-300 text-rose-600 hover:bg-rose-50 font-bold text-xs rounded-xl transition flex items-center gap-1.5">
-            <i class="fa-solid fa-trash-can"></i> Cancelar Reserva
+        <div class="pt-2 flex justify-between items-center gap-2">
+          <button id="btnDeleteDetail" class="flex-1 px-3 py-2 border border-rose-300 text-rose-600 hover:bg-rose-50 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-trash-can"></i> Cancelar
           </button>
-          <button id="btnEditDetail" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow">
-            <i class="fa-solid fa-pen-to-square"></i> Editar Reserva
+          <button id="btnEditDetail" class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1 shadow">
+            <i class="fa-solid fa-pen-to-square"></i> Editar
           </button>
         </div>
       </div>
@@ -237,17 +258,17 @@
   </div>
 
   <!-- MODAL CONFIG -->
-  <div id="modalConfig" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+  <div id="modalConfig" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
       <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
         <h3 class="text-sm font-bold text-slate-800">Estoque Total de Chromebooks</h3>
         <button id="btnCloseConfig" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="p-6 space-y-4">
-        <p class="text-xs text-slate-500">Informe a quantidade total de aparelhos operacionais da escola.</p>
+        <p class="text-xs text-slate-500">Quantidade total de Chromebooks operacionais da escola.</p>
         <div>
           <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Quantidade Total</label>
-          <input type="number" id="inputTotalStock" min="1" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <input type="number" id="inputTotalStock" min="1" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
         <div class="flex justify-end space-x-3 pt-2">
           <button id="btnSaveConfig" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar Alteração</button>
@@ -258,7 +279,7 @@
 
   <script>
     // =========================================================================
-    // 💥 COLE SUAS CHAVES DO FIREBASE ABAIXO DENTRO DAS ASPAS 💥
+    // COLE SUAS CHAVES DO FIREBASE ABAIXO DENTRO DAS ASPAS
     // =========================================================================
     const firebaseConfig = {
       apiKey: "AIzaSyD0YKiDNXvacxMBGXGVvd2QJd-LJQuv2YI",
@@ -327,11 +348,11 @@
       const badge = document.getElementById('dbStatusBadge');
       const text = document.getElementById('dbStatusText');
       if (connected) {
-        badge.className = "hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
-        text.innerText = "Nuvem Conectada (Firebase)";
+        badge.className = "hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
+        text.innerText = "Nuvem Ok";
       } else {
-        badge.className = "hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200";
-        text.innerText = "Modo Local (Sem Nuvem)";
+        badge.className = "hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200";
+        text.innerText = "Modo Local";
       }
     }
 
@@ -350,6 +371,19 @@
     }
 
     function setupEventListeners() {
+      // Sidebar Mobile Toggle
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      
+      const toggleSidebar = () => {
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+      };
+
+      document.getElementById('btnToggleSidebar').addEventListener('click', toggleSidebar);
+      document.getElementById('btnCloseSidebar').addEventListener('click', toggleSidebar);
+      overlay.addEventListener('click', toggleSidebar);
+
       document.getElementById('btnToday').addEventListener('click', () => {
         STATE.currentDate = new Date();
         updateHeaderDateDisplay();
@@ -373,6 +407,7 @@
           STATE.currentDate = new Date(e.target.value + 'T00:00:00');
           updateHeaderDateDisplay();
           renderCurrentView();
+          if (window.innerWidth < 768) toggleSidebar();
         }
       });
 
@@ -391,6 +426,7 @@
       });
 
       document.getElementById('btnOpenNewModal').addEventListener('click', () => openBookingModal());
+      document.getElementById('btnOpenNewModalMobile').addEventListener('click', () => openBookingModal());
       document.getElementById('btnCloseModal').addEventListener('click', closeBookingModal);
       document.getElementById('btnCancelModal').addEventListener('click', closeBookingModal);
 
@@ -437,7 +473,7 @@
     }
 
     function updateHeaderDateDisplay() {
-      const options = { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' };
+      const options = { weekday: 'short', day: 'numeric', month: 'short' };
       document.getElementById('currentDateDisplay').innerText = STATE.currentDate.toLocaleDateString('pt-BR', options);
       document.getElementById('miniDatePicker').value = formatDateIso(STATE.currentDate);
       document.getElementById('displayTotalStock').innerText = STATE.totalStock;
@@ -449,8 +485,8 @@
         const btn = document.getElementById(id);
         const viewName = id.replace('view', '').toLowerCase();
         btn.className = (viewName === STATE.currentView) 
-          ? "px-3 py-1.5 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm border border-slate-200 transition"
-          : "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition";
+          ? "flex-1 sm:flex-none px-3 py-1 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm border border-slate-200 transition"
+          : "flex-1 sm:flex-none px-3 py-1 text-xs font-semibold rounded-lg text-slate-600 transition";
       });
     }
 
@@ -488,7 +524,7 @@
 
       if (!dateStr || !startStr || !endStr) {
         badge.innerText = "Informe o horário";
-        badge.className = "text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600";
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600";
         return;
       }
 
@@ -496,7 +532,7 @@
 
       if (!isValidTime) {
         badge.innerText = "Horário Inválido";
-        badge.className = "text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
         submitBtn.disabled = true;
         return;
       }
@@ -504,12 +540,12 @@
       const available = STATE.totalStock - maxUsed;
 
       if (qty > available) {
-        badge.innerText = `⚠️ Indisponível! Restam apenas ${available}`;
-        badge.className = "text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        badge.innerText = `⚠️ Indisponível! Restam ${available}`;
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
         submitBtn.disabled = true;
       } else {
-        badge.innerText = `🟢 Disponíveis: ${available} de ${STATE.totalStock}`;
-        badge.className = "text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700";
+        badge.innerText = `🟢 Livre: ${available} de ${STATE.totalStock}`;
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700";
         submitBtn.disabled = false;
       }
     }
@@ -604,7 +640,7 @@
       const booking = STATE.reservations.find(r => r.id === STATE.selectedBookingId);
       if (!booking) return;
 
-      const userPin = prompt("Digite o PIN de 4 dígitos cadastrado nesta reserva (ou PIN Master):");
+      const userPin = prompt("Digite o PIN de 4 dígitos cadastrado nesta reserva:");
       if (!userPin) return;
 
       if (userPin === booking.pin || userPin === MASTER_PIN) {
@@ -619,7 +655,7 @@
       const booking = STATE.reservations.find(r => r.id === STATE.selectedBookingId);
       if (!booking) return;
 
-      const userPin = prompt("Para cancelar, digite o PIN de 4 dígitos cadastrado nesta reserva (ou PIN Master):");
+      const userPin = prompt("Para cancelar, digite o PIN de 4 dígitos cadastrado nesta reserva:");
       if (!userPin) return;
 
       if (userPin === booking.pin || userPin === MASTER_PIN) {
@@ -680,19 +716,20 @@
 
       let html = `
         <div class="flex-1 flex flex-col h-full overflow-hidden">
-          <div class="sticky top-0 bg-white border-b border-slate-200 z-30 px-6 py-3 flex items-center justify-between shadow-sm">
-            <h2 class="text-sm font-bold text-slate-800">${STATE.currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
-            <button onclick="openBookingModal('07:30', '${dateStr}')" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-3 py-1.5 rounded-lg border border-blue-200 transition">
-              + Agendar Neste Dia
+          <div class="sticky top-0 bg-white border-b border-slate-200 z-20 px-3 md:px-6 py-2.5 flex items-center justify-between shadow-sm">
+            <h2 class="text-xs md:text-sm font-bold text-slate-800">${STATE.currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
+            <button onclick="openBookingModal('07:30', '${dateStr}')" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-2.5 py-1 rounded-lg border border-blue-200 transition">
+              + Agendar
             </button>
           </div>
 
           <div class="flex-1 overflow-y-auto relative flex">
-            <div class="w-16 bg-slate-50 border-r border-slate-200 shrink-0 text-slate-400 font-mono text-xs select-none">
+            <!-- Régua de Horas -->
+            <div class="w-12 md:w-16 bg-slate-50 border-r border-slate-200 shrink-0 text-slate-400 font-mono text-[10px] md:text-xs select-none">
       `;
 
       for (let h = START_HOUR; h < END_HOUR; h++) {
-        html += `<div class="h-[60px] border-b border-slate-200 pr-2 pt-1 text-right font-semibold">${String(h).padStart(2,'0')}:00</div>`;
+        html += `<div class="h-[60px] border-b border-slate-200 pr-1 md:pr-2 pt-1 text-right font-semibold">${String(h).padStart(2,'0')}:00</div>`;
       }
 
       html += `
@@ -715,18 +752,18 @@
         const topPx = ((timeToMinutes(r.startTime) - START_HOUR * 60) / 60) * 60;
         const heightPx = Math.max(30, ((timeToMinutes(r.endTime) - timeToMinutes(r.startTime)) / 60) * 60);
 
-        const widthPct = 94 / item.totalColumns;
-        const leftPct = 2 + (item.column * widthPct);
+        const widthPct = 95 / item.totalColumns;
+        const leftPct = 1.5 + (item.column * widthPct);
 
         html += `
           <div onclick="openDetailsModal('${r.id}')"
-               class="absolute rounded-lg p-2 border-2 shadow-sm event-card bg-blue-600 text-white border-blue-700 cursor-pointer overflow-hidden"
+               class="absolute rounded-lg p-1.5 md:p-2 border shadow-sm event-card bg-blue-600 text-white border-blue-700 cursor-pointer overflow-hidden"
                style="top: ${topPx}px; height: ${heightPx}px; left: ${leftPct}%; width: ${widthPct - 1}%;">
             <div class="flex justify-between items-center gap-1">
-              <span class="font-bold text-[11px] truncate">${r.professor}</span>
-              <span class="bg-white text-slate-900 font-black text-[10px] px-1.5 py-0.5 rounded shrink-0">💻 ${r.quantity}</span>
+              <span class="font-bold text-[10px] md:text-xs truncate">${r.professor}</span>
+              <span class="bg-white text-slate-900 font-black text-[9px] md:text-[10px] px-1 rounded shrink-0">💻 ${r.quantity}</span>
             </div>
-            <p class="text-[10px] text-white/90 truncate">${r.startTime}-${r.endTime} • ${r.sala}</p>
+            <p class="text-[9px] md:text-[10px] text-white/90 truncate">${r.startTime}-${r.endTime} • ${r.sala}</p>
           </div>
         `;
       });
@@ -781,8 +818,9 @@
       }
 
       let html = `
-        <div class="flex-1 flex flex-col h-full overflow-hidden">
-          <div class="grid grid-cols-5 bg-slate-50 border-b border-slate-200 shrink-0 text-center py-2 font-bold text-xs text-slate-700">
+        <div class="flex-1 flex flex-col h-full overflow-x-auto">
+          <div class="min-w-[650px] flex-1 flex flex-col">
+            <div class="grid grid-cols-5 bg-slate-50 border-b border-slate-200 shrink-0 text-center py-2 font-bold text-xs text-slate-700">
       `;
 
       weekDates.forEach(d => {
@@ -796,8 +834,8 @@
       });
 
       html += `
-          </div>
-          <div class="flex-1 grid grid-cols-5 divide-x divide-slate-200 overflow-y-auto p-2 gap-2 bg-slate-100/50">
+            </div>
+            <div class="flex-1 grid grid-cols-5 divide-x divide-slate-200 overflow-y-auto p-2 gap-2 bg-slate-100/50">
       `;
 
       weekDates.forEach(d => {
@@ -815,7 +853,7 @@
 
         dayBookings.sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)).forEach(r => {
           html += `
-            <div onclick="openDetailsModal('${r.id}')" class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:shadow transition cursor-pointer space-y-1">
+            <div onclick="openDetailsModal('${r.id}')" class="bg-white border border-slate-200 rounded-xl p-2 shadow-sm hover:shadow transition cursor-pointer space-y-1">
               <div class="flex justify-between items-center text-[10px] font-bold text-slate-500">
                 <span>${r.startTime}-${r.endTime}</span>
                 <span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-black">💻 ${r.quantity}</span>
@@ -834,7 +872,7 @@
         `;
       });
 
-      html += `</div></div>`;
+      html += `</div></div></div>`;
       container.innerHTML = html;
     }
 
@@ -851,41 +889,42 @@
       filtered.sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
 
       let html = `
-        <div class="p-6 max-w-4xl mx-auto w-full space-y-4">
+        <div class="p-3 sm:p-6 max-w-4xl mx-auto w-full space-y-3">
           <div class="flex justify-between items-center">
-            <h3 class="text-base font-bold text-slate-800">Agendamentos do Dia (${filtered.length})</h3>
-            <button onclick="openBookingModal('07:30', '${dateStr}')" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs shadow hover:bg-blue-700 transition">
-              + Novo Agendamento
+            <h3 class="text-sm sm:text-base font-bold text-slate-800">Agendamentos (${filtered.length})</h3>
+            <button onclick="openBookingModal('07:30', '${dateStr}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs shadow hover:bg-blue-700 transition">
+              + Novo
             </button>
           </div>
 
-          <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-            <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
-                <tr>
-                  <th class="py-3 px-4">Horário</th>
-                  <th class="py-3 px-4">Professor</th>
-                  <th class="py-3 px-4">Sala/Turma</th>
-                  <th class="py-3 px-4 text-center">Quantidade</th>
-                  <th class="py-3 px-4 text-right">Ação</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
+          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
+                  <tr>
+                    <th class="py-2.5 px-3">Horário</th>
+                    <th class="py-2.5 px-3">Professor</th>
+                    <th class="py-2.5 px-3">Sala/Turma</th>
+                    <th class="py-2.5 px-3 text-center">Qtd</th>
+                    <th class="py-2.5 px-3 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
       `;
 
       if (filtered.length === 0) {
-        html += `<tr><td colspan="5" class="text-center py-8 text-slate-400">Nenhum agendamento para esta data.</td></tr>`;
+        html += `<tr><td colspan="5" class="text-center py-6 text-slate-400">Nenhum agendamento para esta data.</td></tr>`;
       } else {
         filtered.forEach(r => {
           html += `
             <tr class="hover:bg-slate-50 transition">
-              <td class="py-3 px-4 font-bold text-slate-800">${r.startTime} - ${r.endTime}</td>
-              <td class="py-3 px-4 font-bold text-blue-600">${r.professor}</td>
-              <td class="py-3 px-4 text-slate-600">${r.sala} (${r.turma})</td>
-              <td class="py-3 px-4 text-center font-black">
-                <span class="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full">💻 ${r.quantity} un.</span>
+              <td class="py-2.5 px-3 font-bold text-slate-800 whitespace-nowrap">${r.startTime}-${r.endTime}</td>
+              <td class="py-2.5 px-3 font-bold text-blue-600">${r.professor}</td>
+              <td class="py-2.5 px-3 text-slate-600">${r.sala} (${r.turma})</td>
+              <td class="py-2.5 px-3 text-center font-black">
+                <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[11px]">💻 ${r.quantity}</span>
               </td>
-              <td class="py-3 px-4 text-right">
+              <td class="py-2.5 px-3 text-right">
                 <button onclick="openDetailsModal('${r.id}')" class="text-blue-600 hover:text-blue-800 font-bold px-2 py-1 rounded hover:bg-blue-50 transition">
                   Ver / Editar
                 </button>
@@ -895,7 +934,7 @@
         });
       }
 
-      html += `</tbody></table></div></div>`;
+      html += `</tbody></table></div></div></div>`;
       container.innerHTML = html;
     }
   </script>
