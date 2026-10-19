@@ -1,921 +1,903 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="h-full bg-slate-50">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agenda Chromebooks</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        /* Custom scrollbar styling */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agendamento de Chromebooks - Escola</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- SDKs do Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+  <style>
+    .hour-row { height: 60px; }
+    .event-card { transition: all 0.2s ease-in-out; }
+    .event-card:hover { z-index: 30 !important; filter: brightness(0.95); }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="bg-slate-50 font-sans text-slate-800 antialiased h-screen flex flex-col overflow-hidden">
 
-    <!-- HEADER / NAVIGATION -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo & Title -->
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-indigo-100">
-                        💻
-                    </div>
-                    <div>
-                        <h1 class="text-lg font-bold text-slate-900 leading-tight">Chromebook Agenda</h1>
-                        <p class="text-xs text-slate-500 font-medium">Reserva Escolar de Laptops</p>
-                    </div>
-                </div>
-
-                <!-- Date Controls -->
-                <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl">
-                    <button id="btnPrev" class="p-1.5 rounded-lg hover:bg-white text-slate-600 transition shadow-sm">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                    </button>
-                    <button id="btnToday" class="px-3 py-1 text-xs font-semibold rounded-lg hover:bg-white text-slate-700 transition shadow-sm">
-                        Hoje
-                    </button>
-                    <button id="btnNext" class="p-1.5 rounded-lg hover:bg-white text-slate-600 transition shadow-sm">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </button>
-                    <span id="currentDateDisplay" class="text-xs sm:text-sm font-bold text-slate-800 px-2 min-w-[140px] text-center"></span>
-                </div>
-
-                <!-- View Switcher & Action Buttons -->
-                <div class="flex items-center space-x-3">
-                    <div class="bg-slate-100 p-1 rounded-xl flex space-x-1 text-xs font-medium">
-                        <button id="viewDay" class="px-3 py-1.5 rounded-lg transition text-slate-600">Dia</button>
-                        <button id="viewWeek" class="px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold">Semana</button>
-                        <button id="viewList" class="px-3 py-1.5 rounded-lg transition text-slate-600">Lista</button>
-                    </div>
-
-                    <button id="btnNewBooking" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-indigo-100 flex items-center space-x-2 transition">
-                        <span>+ Novo Agendamento</span>
-                    </button>
-
-                    <button id="btnSettings" title="Configurar Estoque da Escola" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    </button>
-                </div>
-            </div>
+  <!-- TOP BAR / HEADER -->
+  <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-sm">
+    <div class="flex items-center space-x-6">
+      <div class="flex items-center space-x-3">
+        <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+          <i class="fa-solid fa-laptop text-xl"></i>
         </div>
-    </header>
+        <div>
+          <h1 class="text-xl font-bold text-slate-800 leading-tight">Chromebook Agenda</h1>
+          <p class="text-xs text-slate-500 font-medium">Sistema de Agendamento Escolar</p>
+        </div>
+      </div>
 
-    <!-- MAIN CONTENT CONTAINER -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">
-        <!-- Info Banner (Total Stock Indicator) -->
-        <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-3 px-4 mb-4 flex items-center justify-between text-xs sm:text-sm text-indigo-900 shadow-sm">
-            <div class="flex items-center space-x-2">
-                <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span><strong>Estoque Total da Escola:</strong> <span id="stockDisplayCount">0</span> Chromebooks</span>
-            </div>
-            <div class="text-indigo-700 hidden sm:block italic text-xs">
-                💡 Clique em qualquer agendamento para ver detalhes, editar ou cancelar usando seu PIN.
-            </div>
+      <!-- Navegação de Data -->
+      <div class="flex items-center space-x-2 pl-6 border-l border-slate-200">
+        <button id="btnToday" class="px-3.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">Hoje</button>
+        <button id="btnPrev" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+        <button id="btnNext" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+        <span id="currentDateDisplay" class="text-base font-bold text-slate-800 min-w-[200px] text-center">---</span>
+      </div>
+    </div>
+
+    <!-- Modos de Visão e Ações -->
+    <div class="flex items-center space-x-3">
+      <!-- Indicador do Firebase -->
+      <div id="dbStatusBadge" class="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+        <span id="dbStatusText">Local (Sem Nuvem)</span>
+      </div>
+
+      <div class="bg-slate-100 p-1 rounded-xl flex space-x-1 border border-slate-200">
+        <button id="viewDay" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">Dia</button>
+        <button id="viewWeek" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">Semana</button>
+        <button id="viewList" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">Lista</button>
+      </div>
+
+      <button id="btnOpenConfig" class="px-3 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold text-xs transition flex items-center gap-2">
+        <i class="fa-solid fa-sliders text-blue-600"></i> Estoque (<span id="displayTotalStock">30</span>)
+      </button>
+
+      <button id="btnOpenNewModal" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition flex items-center gap-2">
+        <i class="fa-solid fa-plus"></i> Novo Agendamento
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT LAYOUT -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="w-72 bg-white border-r border-slate-200 p-5 flex flex-col justify-between shrink-0 overflow-y-auto">
+      <div class="space-y-6">
+        
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Selecionar Data</label>
+          <input type="date" id="miniDatePicker" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
-        <!-- VIEWS CONTAINER -->
-
-        <!-- 1. DAY VIEW (GOOGLE CALENDAR STYLE WITH SIDE TIME RULER & OVERLAP HANDLING) -->
-        <div id="containerDay" class="hidden flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                <h2 id="dayViewTitle" class="font-bold text-slate-800 text-sm sm:text-base capitalize"></h2>
-                <span class="text-xs text-slate-500">Horários de 07:00 às 21:00</span>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase text-slate-500">Resumo do Dia</span>
+            <i class="fa-solid fa-chart-pie text-blue-500"></i>
+          </div>
+          <div class="flex justify-between items-end">
+            <div>
+              <p class="text-2xl font-black text-slate-800" id="statReservations">0</p>
+              <p class="text-[11px] text-slate-500">Reservas hoje</p>
             </div>
-            
-            <div class="flex-1 overflow-y-auto relative p-4" id="dayTimelineWrapper">
-                <!-- Timeline Grid -->
-                <div class="relative w-full h-[840px] border-l border-slate-200 ml-16" id="dayGridContainer">
-                    <!-- Hours scale and events dynamically rendered via JS -->
-                </div>
+            <div class="text-right">
+              <p class="text-2xl font-black text-blue-600" id="statPeakUsed">0/30</p>
+              <p class="text-[11px] text-slate-500">Pico em uso</p>
             </div>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+            <div id="statProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
         </div>
 
-        <!-- 2. WEEK VIEW (CLEAN & MINIMALIST) -->
-        <div id="containerWeek" class="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-            <!-- Week Header Days -->
-            <div class="grid grid-cols-5 border-b border-slate-200 bg-slate-50 text-center font-bold text-xs text-slate-600 divide-x divide-slate-200">
-                <div class="py-3" id="weekHead0">Segunda</div>
-                <div class="py-3" id="weekHead1">Terça</div>
-                <div class="py-3" id="weekHead2">Quarta</div>
-                <div class="py-3" id="weekHead3">Quinta</div>
-                <div class="py-3" id="weekHead4">Sexta</div>
-            </div>
-            
-            <!-- Week Columns Container -->
-            <div class="flex-1 overflow-y-auto p-3">
-                <div class="grid grid-cols-5 gap-3 min-h-[500px]" id="weekColumnsContainer">
-                    <!-- Day columns rendered via JS -->
-                </div>
-            </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Buscar</label>
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+            <input type="text" id="searchInput" placeholder="Professor, sala, turma..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
         </div>
 
-        <!-- 3. LIST VIEW -->
-        <div id="containerList" class="hidden flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                <input type="text" id="searchInput" placeholder="🔍 Buscar por professor, sala ou turma..." class="w-full sm:w-80 px-4 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <span class="text-xs font-semibold text-slate-500" id="listCounter">0 agendamentos</span>
-            </div>
-            
-            <div class="overflow-x-auto flex-1">
-                <table class="w-full text-left text-sm text-slate-600">
-                    <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-200 font-bold">
-                        <tr>
-                            <th class="py-3 px-4">Data</th>
-                            <th class="py-3 px-4">Horário</th>
-                            <th class="py-3 px-4">Professor</th>
-                            <th class="py-3 px-4">Turma / Sala</th>
-                            <th class="py-3 px-4 text-center">Quantidade</th>
-                            <th class="py-3 px-4 text-right">Ação</th>
-                        </tr>
-                    </thead>
-                    <tbody id="listTableBody" class="divide-y divide-slate-100">
-                        <!-- Table rows rendered via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+      </div>
+
+      <div class="text-[11px] text-slate-400 text-center pt-4 border-t border-slate-100">
+        Escola • Controle de Chromebooks
+      </div>
+    </aside>
+
+    <!-- CALENDAR GRID CONTAINER -->
+    <main class="flex-1 overflow-auto bg-white flex flex-col relative" id="calendarContainer">
     </main>
 
-    <!-- MODALS SECTION -->
+  </div>
 
-    <!-- MODAL 1: DETALHES DO AGENDAMENTO (DETALHAMENTO, EDITAR OU CANCELAR) -->
-    <div id="modalDetails" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
-            <div class="flex justify-between items-start border-b border-slate-100 pb-3 mb-4">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xl">
-                        💻
-                    </div>
-                    <div>
-                        <h3 class="text-base font-bold text-slate-900" id="detailTeacher">Prof. Nome</h3>
-                        <p class="text-xs text-slate-500" id="detailDateTime">00/00/0000 • 00:00 - 00:00</p>
-                    </div>
-                </div>
-                <button class="btnCloseDetail text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
+  <!-- MODAL DE AGENDAMENTO -->
+  <div id="modalBooking" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 transform transition-all">
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+        <h3 id="modalBookingTitle" class="text-base font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-calendar-plus text-blue-600"></i> Agendar Chromebooks
+        </h3>
+        <button id="btnCloseModal" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-base"></i></button>
+      </div>
 
-            <div class="space-y-3 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs sm:text-sm">
-                <div class="flex justify-between border-b border-slate-200/60 pb-2">
-                    <span class="text-slate-500 font-medium">Turma:</span>
-                    <span class="font-bold text-slate-800" id="detailTurma">-</span>
-                </div>
-                <div class="flex justify-between border-b border-slate-200/60 pb-2">
-                    <span class="text-slate-500 font-medium">Sala / Local:</span>
-                    <span class="font-bold text-slate-800" id="detailRoom">-</span>
-                </div>
-                <div class="flex justify-between border-b border-slate-200/60 pb-2">
-                    <span class="text-slate-500 font-medium">Chromebooks Solicitados:</span>
-                    <span class="font-extrabold text-indigo-600" id="detailQty">💻 0</span>
-                </div>
-            </div>
+      <form id="formBooking" class="p-6 space-y-4">
+        <input type="hidden" id="inputEditId" value="">
 
-            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                <button id="btnDeleteDetail" class="px-4 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold transition flex items-center space-x-1">
-                    <span>🗑️ Cancelar Agendamento</span>
-                </button>
-                <button id="btnEditDetail" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 transition flex items-center space-x-1">
-                    <span>✏️ Editar Agendamento</span>
-                </button>
-            </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nome do Professor *</label>
+          <input type="text" id="inputProf" required placeholder="Ex: Prof. Carlos Silva" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
-    </div>
 
-    <!-- MODAL 2: FORMULÁRIO DE NOVO / EDITAR AGENDAMENTO (COM VALIDAÇÃO DE ESTOQUE EM TEMPO REAL) -->
-    <div id="modalBooking" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transition-all">
-            <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 class="text-base font-bold text-slate-900" id="modalBookingTitle">Novo Agendamento</h3>
-                <button class="btnCloseModal text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-
-            <form id="formBooking" class="space-y-4">
-                <input type="hidden" id="bookingId">
-                
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Data *</label>
-                    <input type="date" id="bookDate" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                </div>
-
-                <!-- Horários com incremento fixo ou digitação livre -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Início *</label>
-                        <input type="time" id="bookStart" list="timeOptions" required step="300" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Término *</label>
-                        <input type="time" id="bookEnd" list="timeOptions" required step="300" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Professor *</label>
-                        <input type="text" id="bookTeacher" required placeholder="Ex: Prof. Ricardo" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Turma *</label>
-                        <input type="text" id="bookTurma" required placeholder="Ex: 9º Ano A" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Sala / Laboratório *</label>
-                    <input type="text" id="bookRoom" required placeholder="Ex: Sala 04 / Lab de Informática" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                </div>
-
-                <!-- Quantidade com monitoramento em tempo real -->
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="block text-xs font-bold text-slate-600 uppercase">Qtd. Chromebooks *</label>
-                        <span id="stockFeedbackBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Calculando...</span>
-                    </div>
-                    <input type="number" id="bookQty" required min="1" placeholder="Ex: 20" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                </div>
-
-                <!-- Caixa de Alerta de Estoque Dinâmica -->
-                <div id="stockAlertBox" class="hidden text-xs p-3 rounded-xl border font-medium"></div>
-
-                <!-- PIN para Autogestão -->
-                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3.5">
-                    <label class="block text-xs font-bold text-amber-900 mb-1">Crie um PIN de 4 dígitos para este agendamento *</label>
-                    <input type="password" id="bookPin" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="****" required class="w-full px-3 py-2 border border-amber-300 rounded-xl text-sm text-center font-mono font-bold tracking-widest focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
-                    <p class="text-[10px] text-amber-700 mt-1">Este PIN autoriza apenas você (ou o Administrador) a alterar ou cancelar esta reserva.</p>
-                </div>
-
-                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
-                    <button type="button" class="btnCloseModal px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">Cancelar</button>
-                    <button type="submit" id="btnSubmitBooking" class="px-5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed">
-                        Confirmar Agendamento
-                    </button>
-                </div>
-            </form>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Sala de Aula *</label>
+            <input type="text" id="inputSala" required placeholder="Ex: Sala 08" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Turma *</label>
+            <input type="text" id="inputTurma" required placeholder="Ex: 9º Ano B" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
         </div>
-    </div>
 
-    <!-- MODAL 3: AUTENTICAÇÃO DE PIN -->
-    <div id="modalPinAuth" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center">
-            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl font-bold">
-                🔒
-            </div>
-            <h3 class="text-base font-bold text-slate-900 mb-1">Autenticação do Agendamento</h3>
-            <p class="text-xs text-slate-500 mb-4">Insira o PIN de 4 dígitos cadastrado nesta reserva (ou o PIN Master 9999).</p>
-
-            <input type="password" id="authPinInput" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="****" class="w-36 mx-auto text-center font-mono text-2xl font-bold tracking-widest border border-slate-300 rounded-xl py-2 mb-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-
-            <div id="pinErrorMsg" class="text-xs font-bold text-rose-500 mb-3 hidden">❌ PIN incorreto. Tente novamente.</div>
-
-            <div class="flex justify-center space-x-2">
-                <button id="btnCancelPinAuth" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">Cancelar</button>
-                <button id="btnConfirmPinAuth" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow">Confirmar</button>
-            </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Data *</label>
+          <input type="date" id="inputDate" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
-    </div>
 
-    <!-- MODAL 4: CONFIGURAÇÃO DE ESTOQUE TOTAL DA ESCOLA -->
-    <div id="modalSettings" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
-            <h3 class="text-base font-bold text-slate-900 mb-1">Estoque da Escola</h3>
-            <p class="text-xs text-slate-500 mb-4">Apenas a gestão escolar deve alterar o número total de Chromebooks.</p>
-
-            <form id="formSettings" class="space-y-3">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Total de Chromebooks</label>
-                    <input type="number" id="settingStockInput" min="1" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">PIN Administrador</label>
-                    <input type="password" id="settingAdminPin" maxlength="4" placeholder="Padrão: 9999" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                </div>
-                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
-                    <button type="button" class="btnCloseModal px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">Voltar</button>
-                    <button type="submit" class="px-4 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700">Salvar Alteração</button>
-                </div>
-            </form>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Horário Início *</label>
+            <input type="time" id="inputStartTime" list="timeList" required step="60" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Horário Término *</label>
+            <input type="time" id="inputEndTime" list="timeList" required step="60" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
         </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-xs font-bold text-slate-600 uppercase">Quantidade de Chromebooks *</label>
+            <span id="stockCheckBadge" class="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Calculando...</span>
+          </div>
+          <input type="number" id="inputQty" min="1" required placeholder="Ex: 25" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <label class="block text-xs font-bold text-slate-700 mb-1">PIN de Segurança (4 dígitos) *</label>
+          <p class="text-[11px] text-slate-500 mb-2">Crie uma senha numérica simples para poder alterar ou cancelar este agendamento depois.</p>
+          <input type="password" id="inputPin" maxlength="4" pattern="[0-9]{4}" required placeholder="Ex: 1234" class="w-32 px-3 py-1.5 border border-slate-300 rounded-lg text-xs text-center font-bold tracking-widest focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <datalist id="timeList"></datalist>
+
+        <div class="pt-3 border-t border-slate-100 flex justify-end space-x-3">
+          <button type="button" id="btnCancelModal" class="px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">Cancelar</button>
+          <button type="submit" id="btnSaveBooking" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-md transition">Confirmar Agendamento</button>
+        </div>
+      </form>
     </div>
+  </div>
 
-    <!-- DATALIST COM HORÁRIOS EM INCREMENTOS DE 15 EM 15 MINUTOS -->
-    <datalist id="timeOptions">
-        <!-- Preenchido via JS de 07:00 a 21:00 -->
-    </datalist>
+  <!-- MODAL DETALHES -->
+  <div id="modalDetails" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
+      <div class="bg-blue-600 px-6 py-4 text-white flex justify-between items-center">
+        <h3 class="text-base font-bold flex items-center gap-2">
+          <i class="fa-solid fa-laptop"></i> Detalhes da Reserva
+        </h3>
+        <button id="btnCloseDetails" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
 
-    <!-- LOGIC & APPLICATION ENGINE -->
-    <script>
-        // --- CONFIGURAÇÕES E ESTADO GLOBAL ---
-        const ADMIN_PIN = "9999";
-        const START_HOUR = 7;
-        const END_HOUR = 21;
+      <div class="p-6 space-y-4">
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+          <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+            <span class="text-xs text-slate-500 uppercase font-bold">Professor</span>
+            <span id="detailProf" class="text-sm font-bold text-slate-800">---</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-500 uppercase font-bold">Horário</span>
+            <span id="detailTime" class="text-xs font-bold text-blue-600">---</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-500 uppercase font-bold">Data</span>
+            <span id="detailDate" class="text-xs font-medium text-slate-700">---</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-500 uppercase font-bold">Sala / Turma</span>
+            <span id="detailLocation" class="text-xs font-medium text-slate-700">---</span>
+          </div>
+          <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+            <span class="text-xs text-slate-500 uppercase font-bold">Quantidade</span>
+            <span id="detailQty" class="text-sm font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">💻 ---</span>
+          </div>
+        </div>
 
-        let state = {
-            view: 'week', // 'day', 'week', 'list'
-            selectedDate: new Date(),
-            totalStock: parseInt(localStorage.getItem('chromebook_stock')) || 40,
-            appointments: JSON.parse(localStorage.getItem('chromebook_appointments')) || [],
-            activeAppointment: null, // Para modal de detalhes
-            pendingAction: null // Callback após autorização de PIN
-        };
+        <div class="pt-2 flex justify-between items-center gap-3">
+          <button id="btnDeleteDetail" class="px-4 py-2 border border-rose-300 text-rose-600 hover:bg-rose-50 font-bold text-xs rounded-xl transition flex items-center gap-1.5">
+            <i class="fa-solid fa-trash-can"></i> Cancelar Reserva
+          </button>
+          <button id="btnEditDetail" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow">
+            <i class="fa-solid fa-pen-to-square"></i> Editar Reserva
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        // Dados Iniciais de Demonstração (se estiver vazio)
-        if (state.appointments.length === 0) {
-            const todayStr = getYYYYMMDD(new Date());
-            state.appointments = [
-                { id: '1', date: todayStr, startTime: '07:30', endTime: '08:50', teacher: 'Prof. Ricardo', turma: '9º Ano A', room: 'Lab de Informática', qty: 20, pin: '1234' },
-                { id: '2', date: todayStr, startTime: '08:00', endTime: '09:20', teacher: 'Profª. Amanda', turma: '8º Ano B', room: 'Sala 05', qty: 15, pin: '1234' },
-                { id: '3', date: todayStr, startTime: '10:00', endTime: '11:15', teacher: 'Prof. Carlos', turma: '7º Ano C', room: 'Sala 12', qty: 25, pin: '1234' }
-            ];
-            saveAppointments();
+  <!-- MODAL CONFIG -->
+  <div id="modalConfig" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+        <h3 class="text-sm font-bold text-slate-800">Estoque Total de Chromebooks</h3>
+        <button id="btnCloseConfig" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <p class="text-xs text-slate-500">Informe a quantidade total de aparelhos operacionais da escola.</p>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Quantidade Total</label>
+          <input type="number" id="inputTotalStock" min="1" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div class="flex justify-end space-x-3 pt-2">
+          <button id="btnSaveConfig" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar Alteração</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 💥 COLE SUAS CHAVES DO FIREBASE ABAIXO DENTRO DAS ASPAS 💥
+    // =========================================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0YKiDNXvacxMBGXGVvd2QJd-LJQuv2YI",
+      authDomain: "agendamento-chromebook-d98f2.firebaseapp.com",
+      projectId: "agendamento-chromebook-d98f2",
+      storageBucket: "agendamento-chromebook-d98f2.firebasestorage.app",
+      messagingSenderId: "170568705061",
+      appId: "1:170568705061:web:c18ff9d09596fa39d08bcc"
+    };
+
+    const STATE = {
+      totalStock: parseInt(localStorage.getItem('chromebook_stock')) || 30,
+      reservations: [],
+      currentDate: new Date(),
+      currentView: 'day',
+      filterQuery: '',
+      selectedBookingId: null,
+      dbConnected: false
+    };
+
+    const START_HOUR = 7;
+    const END_HOUR = 21;
+    const MASTER_PIN = "9999";
+
+    let dbRef = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initFirebase();
+      populateTimeDatalist();
+      setupEventListeners();
+      updateHeaderDateDisplay();
+      
+      if (!STATE.dbConnected) {
+        STATE.reservations = JSON.parse(localStorage.getItem('chromebook_reservations')) || [];
+        renderCurrentView();
+      }
+    });
+
+    function initFirebase() {
+      if (firebaseConfig.databaseURL && firebaseConfig.databaseURL.trim() !== "") {
+        try {
+          firebase.initializeApp(firebaseConfig);
+          dbRef = firebase.database().ref('reservations');
+          
+          dbRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+              STATE.reservations = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+            } else {
+              STATE.reservations = [];
+            }
+            STATE.dbConnected = true;
+            updateStatusBadge(true);
+            renderCurrentView();
+          });
+        } catch (e) {
+          console.error("Erro ao conectar no Firebase:", e);
+          updateStatusBadge(false);
+        }
+      } else {
+        updateStatusBadge(false);
+      }
+    }
+
+    function updateStatusBadge(connected) {
+      const badge = document.getElementById('dbStatusBadge');
+      const text = document.getElementById('dbStatusText');
+      if (connected) {
+        badge.className = "hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
+        text.innerText = "Nuvem Conectada (Firebase)";
+      } else {
+        badge.className = "hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200";
+        text.innerText = "Modo Local (Sem Nuvem)";
+      }
+    }
+
+    function populateTimeDatalist() {
+      const datalist = document.getElementById('timeList');
+      datalist.innerHTML = '';
+      for (let h = START_HOUR; h <= END_HOUR; h++) {
+        for (let m = 0; m < 60; m += 15) {
+          const hh = String(h).padStart(2, '0');
+          const mm = String(m).padStart(2, '0');
+          const option = document.createElement('option');
+          option.value = `${hh}:${mm}`;
+          datalist.appendChild(option);
+        }
+      }
+    }
+
+    function setupEventListeners() {
+      document.getElementById('btnToday').addEventListener('click', () => {
+        STATE.currentDate = new Date();
+        updateHeaderDateDisplay();
+        renderCurrentView();
+      });
+
+      document.getElementById('btnPrev').addEventListener('click', () => {
+        STATE.currentDate.setDate(STATE.currentDate.getDate() - (STATE.currentView === 'week' ? 7 : 1));
+        updateHeaderDateDisplay();
+        renderCurrentView();
+      });
+
+      document.getElementById('btnNext').addEventListener('click', () => {
+        STATE.currentDate.setDate(STATE.currentDate.getDate() + (STATE.currentView === 'week' ? 7 : 1));
+        updateHeaderDateDisplay();
+        renderCurrentView();
+      });
+
+      document.getElementById('miniDatePicker').addEventListener('change', (e) => {
+        if (e.target.value) {
+          STATE.currentDate = new Date(e.target.value + 'T00:00:00');
+          updateHeaderDateDisplay();
+          renderCurrentView();
+        }
+      });
+
+      const views = { viewDay: 'day', viewWeek: 'week', viewList: 'list' };
+      Object.keys(views).forEach(id => {
+        document.getElementById(id).addEventListener('click', () => {
+          STATE.currentView = views[id];
+          updateViewButtonsUI();
+          renderCurrentView();
+        });
+      });
+
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        STATE.filterQuery = e.target.value.toLowerCase();
+        renderCurrentView();
+      });
+
+      document.getElementById('btnOpenNewModal').addEventListener('click', () => openBookingModal());
+      document.getElementById('btnCloseModal').addEventListener('click', closeBookingModal);
+      document.getElementById('btnCancelModal').addEventListener('click', closeBookingModal);
+
+      document.getElementById('btnCloseDetails').addEventListener('click', closeDetailsModal);
+      document.getElementById('btnDeleteDetail').addEventListener('click', handleDeleteFromDetails);
+      document.getElementById('btnEditDetail').addEventListener('click', handleEditFromDetails);
+
+      document.getElementById('btnOpenConfig').addEventListener('click', () => {
+        document.getElementById('inputTotalStock').value = STATE.totalStock;
+        document.getElementById('modalConfig').classList.remove('hidden');
+      });
+      document.getElementById('btnCloseConfig').addEventListener('click', () => {
+        document.getElementById('modalConfig').classList.add('hidden');
+      });
+      document.getElementById('btnSaveConfig').addEventListener('click', () => {
+        const val = parseInt(document.getElementById('inputTotalStock').value);
+        if (val && val > 0) {
+          STATE.totalStock = val;
+          localStorage.setItem('chromebook_stock', val);
+          document.getElementById('displayTotalStock').innerText = val;
+          document.getElementById('modalConfig').classList.add('hidden');
+          renderCurrentView();
+        }
+      });
+
+      ['inputDate', 'inputStartTime', 'inputEndTime', 'inputQty'].forEach(id => {
+        document.getElementById(id).addEventListener('input', validateStockInModal);
+      });
+
+      document.getElementById('formBooking').addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveBooking();
+      });
+    }
+
+    function formatDateIso(dateObj) {
+      return dateObj.toISOString().split('T')[0];
+    }
+
+    function timeToMinutes(timeStr) {
+      if (!timeStr) return 0;
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function updateHeaderDateDisplay() {
+      const options = { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' };
+      document.getElementById('currentDateDisplay').innerText = STATE.currentDate.toLocaleDateString('pt-BR', options);
+      document.getElementById('miniDatePicker').value = formatDateIso(STATE.currentDate);
+      document.getElementById('displayTotalStock').innerText = STATE.totalStock;
+      updateViewButtonsUI();
+    }
+
+    function updateViewButtonsUI() {
+      ['viewDay', 'viewWeek', 'viewList'].forEach(id => {
+        const btn = document.getElementById(id);
+        const viewName = id.replace('view', '').toLowerCase();
+        btn.className = (viewName === STATE.currentView) 
+          ? "px-3 py-1.5 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm border border-slate-200 transition"
+          : "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition";
+      });
+    }
+
+    function getPeakUsageInInterval(dateStr, startTimeStr, endTimeStr, ignoreId = null) {
+      const reqStart = timeToMinutes(startTimeStr);
+      const reqEnd = timeToMinutes(endTimeStr);
+
+      if (reqEnd <= reqStart) return { maxUsed: 0, isValidTime: false };
+
+      const dayBookings = STATE.reservations.filter(r => r.date === dateStr && r.id !== ignoreId);
+      let maxConcurrent = 0;
+
+      for (let t = reqStart; t < reqEnd; t++) {
+        let currentUsed = 0;
+        dayBookings.forEach(r => {
+          if (t >= timeToMinutes(r.startTime) && t < timeToMinutes(r.endTime)) {
+            currentUsed += parseInt(r.quantity);
+          }
+        });
+        if (currentUsed > maxConcurrent) maxConcurrent = currentUsed;
+      }
+
+      return { maxUsed: maxConcurrent, isValidTime: true };
+    }
+
+    function validateStockInModal() {
+      const dateStr = document.getElementById('inputDate').value;
+      const startStr = document.getElementById('inputStartTime').value;
+      const endStr = document.getElementById('inputEndTime').value;
+      const qty = parseInt(document.getElementById('inputQty').value) || 0;
+      const editId = document.getElementById('inputEditId').value;
+
+      const badge = document.getElementById('stockCheckBadge');
+      const submitBtn = document.getElementById('btnSaveBooking');
+
+      if (!dateStr || !startStr || !endStr) {
+        badge.innerText = "Informe o horário";
+        badge.className = "text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600";
+        return;
+      }
+
+      const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startStr, endStr, editId);
+
+      if (!isValidTime) {
+        badge.innerText = "Horário Inválido";
+        badge.className = "text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        submitBtn.disabled = true;
+        return;
+      }
+
+      const available = STATE.totalStock - maxUsed;
+
+      if (qty > available) {
+        badge.innerText = `⚠️ Indisponível! Restam apenas ${available}`;
+        badge.className = "text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        submitBtn.disabled = true;
+      } else {
+        badge.innerText = `🟢 Disponíveis: ${available} de ${STATE.totalStock}`;
+        badge.className = "text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700";
+        submitBtn.disabled = false;
+      }
+    }
+
+    function openBookingModal(defaultStart = '07:30', defaultDate = null, bookingToEdit = null) {
+      document.getElementById('formBooking').reset();
+      
+      if (bookingToEdit) {
+        document.getElementById('modalBookingTitle').innerText = "Editar Agendamento";
+        document.getElementById('inputEditId').value = bookingToEdit.id;
+        document.getElementById('inputProf').value = bookingToEdit.professor;
+        document.getElementById('inputSala').value = bookingToEdit.sala;
+        document.getElementById('inputTurma').value = bookingToEdit.turma;
+        document.getElementById('inputDate').value = bookingToEdit.date;
+        document.getElementById('inputStartTime').value = bookingToEdit.startTime;
+        document.getElementById('inputEndTime').value = bookingToEdit.endTime;
+        document.getElementById('inputQty').value = bookingToEdit.quantity;
+        document.getElementById('inputPin').value = bookingToEdit.pin || "";
+      } else {
+        document.getElementById('modalBookingTitle').innerText = "Novo Agendamento";
+        document.getElementById('inputEditId').value = "";
+        document.getElementById('inputDate').value = defaultDate || formatDateIso(STATE.currentDate);
+        document.getElementById('inputStartTime').value = defaultStart;
+        
+        const startMin = timeToMinutes(defaultStart);
+        const endMin = Math.min(startMin + 50, END_HOUR * 60);
+        document.getElementById('inputEndTime').value = `${String(Math.floor(endMin / 60)).padStart(2,'0')}:${String(endMin % 60).padStart(2,'0')}`;
+        document.getElementById('inputQty').value = 25;
+      }
+
+      document.getElementById('modalBooking').classList.remove('hidden');
+      validateStockInModal();
+    }
+
+    function closeBookingModal() {
+      document.getElementById('modalBooking').classList.add('hidden');
+    }
+
+    function saveBooking() {
+      const editId = document.getElementById('inputEditId').value;
+      const bookingData = {
+        professor: document.getElementById('inputProf').value.trim(),
+        sala: document.getElementById('inputSala').value.trim(),
+        turma: document.getElementById('inputTurma').value.trim(),
+        date: document.getElementById('inputDate').value,
+        startTime: document.getElementById('inputStartTime').value,
+        endTime: document.getElementById('inputEndTime').value,
+        quantity: parseInt(document.getElementById('inputQty').value),
+        pin: document.getElementById('inputPin').value.trim()
+      };
+
+      if (STATE.dbConnected && dbRef) {
+        if (editId) {
+          dbRef.child(editId).update(bookingData);
+        } else {
+          dbRef.push(bookingData);
+        }
+      } else {
+        if (editId) {
+          const idx = STATE.reservations.findIndex(r => r.id === editId);
+          if (idx !== -1) STATE.reservations[idx] = { id: editId, ...bookingData };
+        } else {
+          STATE.reservations.push({ id: 'res-' + Date.now(), ...bookingData });
+        }
+        localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.reservations));
+        renderCurrentView();
+      }
+
+      closeBookingModal();
+    }
+
+    function openDetailsModal(bookingId) {
+      const booking = STATE.reservations.find(r => r.id === bookingId);
+      if (!booking) return;
+
+      STATE.selectedBookingId = bookingId;
+      document.getElementById('detailProf').innerText = booking.professor;
+      document.getElementById('detailTime').innerText = `${booking.startTime} às ${booking.endTime}`;
+      document.getElementById('detailDate').innerText = new Date(booking.date + 'T00:00:00').toLocaleDateString('pt-BR');
+      document.getElementById('detailLocation').innerText = `${booking.sala} (${booking.turma})`;
+      document.getElementById('detailQty').innerText = `💻 ${booking.quantity} aparelhos`;
+
+      document.getElementById('modalDetails').classList.remove('hidden');
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('modalDetails').classList.add('hidden');
+      STATE.selectedBookingId = null;
+    }
+
+    function handleEditFromDetails() {
+      const booking = STATE.reservations.find(r => r.id === STATE.selectedBookingId);
+      if (!booking) return;
+
+      const userPin = prompt("Digite o PIN de 4 dígitos cadastrado nesta reserva (ou PIN Master):");
+      if (!userPin) return;
+
+      if (userPin === booking.pin || userPin === MASTER_PIN) {
+        closeDetailsModal();
+        openBookingModal(null, null, booking);
+      } else {
+        alert("❌ PIN incorreto! Apenas o próprio professor ou o admin podem alterar.");
+      }
+    }
+
+    function handleDeleteFromDetails() {
+      const booking = STATE.reservations.find(r => r.id === STATE.selectedBookingId);
+      if (!booking) return;
+
+      const userPin = prompt("Para cancelar, digite o PIN de 4 dígitos cadastrado nesta reserva (ou PIN Master):");
+      if (!userPin) return;
+
+      if (userPin === booking.pin || userPin === MASTER_PIN) {
+        if (confirm(`Confirmar cancelamento da reserva de ${booking.professor}?`)) {
+          if (STATE.dbConnected && dbRef) {
+            dbRef.child(booking.id).remove();
+          } else {
+            STATE.reservations = STATE.reservations.filter(r => r.id !== booking.id);
+            localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.reservations));
+            renderCurrentView();
+          }
+          closeDetailsModal();
+        }
+      } else {
+        alert("❌ PIN incorreto! Agendamento mantido.");
+      }
+    }
+
+    function updateSidebarStats(dateStr) {
+      const dayBookings = STATE.reservations.filter(r => r.date === dateStr);
+      document.getElementById('statReservations').innerText = dayBookings.length;
+
+      let peak = 0;
+      for (let h = START_HOUR * 60; h < END_HOUR * 60; h += 15) {
+        let current = 0;
+        dayBookings.forEach(r => {
+          if (h >= timeToMinutes(r.startTime) && h < timeToMinutes(r.endTime)) current += parseInt(r.quantity);
+        });
+        if (current > peak) peak = current;
+      }
+
+      document.getElementById('statPeakUsed').innerText = `${peak}/${STATE.totalStock}`;
+      const pct = Math.min(100, Math.round((peak / STATE.totalStock) * 100));
+      const pBar = document.getElementById('statProgressBar');
+      pBar.style.width = `${pct}%`;
+      pBar.className = pct >= 100 ? "bg-rose-500 h-2 rounded-full transition-all" : (pct > 50 ? "bg-amber-500 h-2 rounded-full transition-all" : "bg-blue-600 h-2 rounded-full transition-all");
+    }
+
+    function renderCurrentView() {
+      const container = document.getElementById('calendarContainer');
+      const dateStr = formatDateIso(STATE.currentDate);
+      updateSidebarStats(dateStr);
+
+      if (STATE.currentView === 'day') renderDayGrid(container, dateStr);
+      else if (STATE.currentView === 'week') renderWeekGrid(container);
+      else if (STATE.currentView === 'list') renderListView(container, dateStr);
+    }
+
+    function renderDayGrid(container, dateStr) {
+      let filtered = STATE.reservations.filter(r => r.date === dateStr);
+      if (STATE.filterQuery) {
+        filtered = filtered.filter(r => 
+          r.professor.toLowerCase().includes(STATE.filterQuery) ||
+          r.turma.toLowerCase().includes(STATE.filterQuery) ||
+          r.sala.toLowerCase().includes(STATE.filterQuery)
+        );
+      }
+
+      let html = `
+        <div class="flex-1 flex flex-col h-full overflow-hidden">
+          <div class="sticky top-0 bg-white border-b border-slate-200 z-30 px-6 py-3 flex items-center justify-between shadow-sm">
+            <h2 class="text-sm font-bold text-slate-800">${STATE.currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
+            <button onclick="openBookingModal('07:30', '${dateStr}')" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-3 py-1.5 rounded-lg border border-blue-200 transition">
+              + Agendar Neste Dia
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto relative flex">
+            <div class="w-16 bg-slate-50 border-r border-slate-200 shrink-0 text-slate-400 font-mono text-xs select-none">
+      `;
+
+      for (let h = START_HOUR; h < END_HOUR; h++) {
+        html += `<div class="h-[60px] border-b border-slate-200 pr-2 pt-1 text-right font-semibold">${String(h).padStart(2,'0')}:00</div>`;
+      }
+
+      html += `
+            </div>
+            <div class="flex-1 relative bg-white">
+      `;
+
+      for (let h = START_HOUR; h < END_HOUR; h++) {
+        html += `
+          <div class="h-[60px] border-b border-slate-100 group cursor-pointer hover:bg-blue-50/30 transition"
+               onclick="openBookingModal('${String(h).padStart(2,'0')}:00', '${dateStr}')">
+          </div>
+        `;
+      }
+
+      const eventsWithPos = computeOverlappingLayout(filtered);
+
+      eventsWithPos.forEach(item => {
+        const r = item.event;
+        const topPx = ((timeToMinutes(r.startTime) - START_HOUR * 60) / 60) * 60;
+        const heightPx = Math.max(30, ((timeToMinutes(r.endTime) - timeToMinutes(r.startTime)) / 60) * 60);
+
+        const widthPct = 94 / item.totalColumns;
+        const leftPct = 2 + (item.column * widthPct);
+
+        html += `
+          <div onclick="openDetailsModal('${r.id}')"
+               class="absolute rounded-lg p-2 border-2 shadow-sm event-card bg-blue-600 text-white border-blue-700 cursor-pointer overflow-hidden"
+               style="top: ${topPx}px; height: ${heightPx}px; left: ${leftPct}%; width: ${widthPct - 1}%;">
+            <div class="flex justify-between items-center gap-1">
+              <span class="font-bold text-[11px] truncate">${r.professor}</span>
+              <span class="bg-white text-slate-900 font-black text-[10px] px-1.5 py-0.5 rounded shrink-0">💻 ${r.quantity}</span>
+            </div>
+            <p class="text-[10px] text-white/90 truncate">${r.startTime}-${r.endTime} • ${r.sala}</p>
+          </div>
+        `;
+      });
+
+      html += `
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function computeOverlappingLayout(events) {
+      if (!events || events.length === 0) return [];
+
+      const sorted = [...events].sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+      const results = [];
+      const columns = [];
+
+      sorted.forEach(evt => {
+        const start = timeToMinutes(evt.startTime);
+        const end = timeToMinutes(evt.endTime);
+
+        let placed = false;
+        for (let i = 0; i < columns.length; i++) {
+          if (columns[i] <= start) {
+            columns[i] = end;
+            results.push({ event: evt, column: i, totalColumns: 1 });
+            placed = true;
+            break;
+          }
         }
 
-        // Elementos DOM
-        const elDateDisplay = document.getElementById('currentDateDisplay');
-        const elStockDisplay = document.getElementById('stockDisplayCount');
-        const viewDay = document.getElementById('viewDay');
-        const viewWeek = document.getElementById('viewWeek');
-        const viewList = document.getElementById('viewList');
-        const containerDay = document.getElementById('containerDay');
-        const containerWeek = document.getElementById('containerWeek');
-        const containerList = document.getElementById('containerList');
+        if (!placed) {
+          columns.push(end);
+          results.push({ event: evt, column: columns.length - 1, totalColumns: 1 });
+        }
+      });
 
-        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
-        window.addEventListener('DOMContentLoaded', () => {
-            populateTimeOptions();
-            updateStockUI();
-            render();
-            setupEventListeners();
+      const totalCols = columns.length || 1;
+      return results.map(r => ({ ...r, totalColumns: totalCols }));
+    }
+
+    function renderWeekGrid(container) {
+      const curr = new Date(STATE.currentDate);
+      const firstDay = curr.getDate() - curr.getDay() + 1;
+      const weekDates = [];
+
+      for (let i = 0; i < 5; i++) {
+        weekDates.push(new Date(curr.setDate(firstDay + i)));
+      }
+
+      let html = `
+        <div class="flex-1 flex flex-col h-full overflow-hidden">
+          <div class="grid grid-cols-5 bg-slate-50 border-b border-slate-200 shrink-0 text-center py-2 font-bold text-xs text-slate-700">
+      `;
+
+      weekDates.forEach(d => {
+        const isToday = formatDateIso(d) === formatDateIso(new Date());
+        html += `
+          <div class="px-2 border-r border-slate-200 last:border-r-0 ${isToday ? 'text-blue-600 font-extrabold' : ''}">
+            <div class="uppercase text-[10px] text-slate-400">${d.toLocaleDateString('pt-BR', { weekday: 'short' })}</div>
+            <div class="text-xs">${d.getDate()}/${d.getMonth()+1}</div>
+          </div>
+        `;
+      });
+
+      html += `
+          </div>
+          <div class="flex-1 grid grid-cols-5 divide-x divide-slate-200 overflow-y-auto p-2 gap-2 bg-slate-100/50">
+      `;
+
+      weekDates.forEach(d => {
+        const dateStr = formatDateIso(d);
+        let dayBookings = STATE.reservations.filter(r => r.date === dateStr);
+
+        if (STATE.filterQuery) {
+          dayBookings = dayBookings.filter(r => 
+            r.professor.toLowerCase().includes(STATE.filterQuery) ||
+            r.turma.toLowerCase().includes(STATE.filterQuery)
+          );
+        }
+
+        html += `<div class="space-y-2">`;
+
+        dayBookings.sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)).forEach(r => {
+          html += `
+            <div onclick="openDetailsModal('${r.id}')" class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:shadow transition cursor-pointer space-y-1">
+              <div class="flex justify-between items-center text-[10px] font-bold text-slate-500">
+                <span>${r.startTime}-${r.endTime}</span>
+                <span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-black">💻 ${r.quantity}</span>
+              </div>
+              <h5 class="font-bold text-xs text-slate-800 truncate">${r.professor}</h5>
+              <p class="text-[10px] text-slate-500 truncate">${r.sala} • ${r.turma}</p>
+            </div>
+          `;
         });
 
-        // Preencher Datalist com sugestões de 15 em 15 minutos
-        function populateTimeOptions() {
-            const datalist = document.getElementById('timeOptions');
-            datalist.innerHTML = '';
-            for (let h = START_HOUR; h <= END_HOUR; h++) {
-                for (let m = 0; m < 60; m += 15) {
-                    const hh = String(h).padStart(2, '0');
-                    const mm = String(m).padStart(2, '0');
-                    const opt = document.createElement('option');
-                    opt.value = `${hh}:${mm}`;
-                    datalist.appendChild(opt);
-                }
-            }
-        }
-
-        // PERSISTÊNCIA DE DADOS
-        function saveAppointments() {
-            localStorage.setItem('chromebook_appointments', JSON.stringify(state.appointments));
-        }
-        function saveStock() {
-            localStorage.setItem('chromebook_stock', state.totalStock);
-            updateStockUI();
-        }
-        function updateStockUI() {
-            elStockDisplay.innerText = state.totalStock;
-        }
-
-        // UTILITÁRIOS DE DATA E HORA
-        function getYYYYMMDD(dateObj) {
-            const y = dateObj.getFullYear();
-            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const d = String(dateObj.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        }
-
-        function formatDisplayDate(dateObj) {
-            return dateObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
-        }
-
-        function timeToMinutes(timeStr) {
-            if (!timeStr) return 0;
-            const [h, m] = timeStr.split(':').map(Number);
-            return h * 60 + m;
-        }
-
-        function getMonday(d) {
-            const date = new Date(d);
-            const day = date.getDay();
-            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-            return new Date(date.setDate(diff));
-        }
-
-        // --- MOTOR PRINCIPAL DE RENDERIZAÇÃO ---
-        function render() {
-            // Atualizar título do cabeçalho
-            if (state.view === 'day') {
-                elDateDisplay.innerText = formatDisplayDate(state.selectedDate);
-            } else if (state.view === 'week') {
-                const mon = getMonday(state.selectedDate);
-                const fri = new Date(mon);
-                fri.setDate(mon.getDate() + 4);
-                elDateDisplay.innerText = `${mon.getDate()}/${mon.getMonth()+1} - ${fri.getDate()}/${fri.getMonth()+1}`;
-            } else {
-                elDateDisplay.innerText = "Lista Geral";
-            }
-
-            // Alternância visual das abas
-            [viewDay, viewWeek, viewList].forEach(b => {
-                b.className = "px-3 py-1.5 rounded-lg transition text-slate-600";
-            });
-            containerDay.classList.add('hidden');
-            containerWeek.classList.add('hidden');
-            containerList.classList.add('hidden');
-
-            if (state.view === 'day') {
-                viewDay.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-bold";
-                containerDay.classList.remove('hidden');
-                renderDayView();
-            } else if (state.view === 'week') {
-                viewWeek.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-bold";
-                containerWeek.classList.remove('hidden');
-                renderWeekView();
-            } else {
-                viewList.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-bold";
-                containerList.classList.remove('hidden');
-                renderListView();
-            }
-        }
-
-        // --- 1. VISÃO DE DIA (GOOGLE AGENDA + RÉGUA LATERAL + TRATAMENTO DE SOBREPOSIÇÃO) ---
-        function renderDayView() {
-            const dayTitle = document.getElementById('dayViewTitle');
-            dayTitle.innerText = state.selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
-            const gridContainer = document.getElementById('dayGridContainer');
-            gridContainer.innerHTML = '';
-
-            const totalMinRange = (END_HOUR - START_HOUR) * 60; // 07:00 as 21:00 = 840 mins
-
-            // Desenhar régua com marcações de horas na esquerda
-            for (let h = START_HOUR; h <= END_HOUR; h++) {
-                const topPct = ((h - START_HOUR) * 60 / totalMinRange) * 100;
-                
-                // Rótulo da Hora
-                const label = document.createElement('div');
-                label.className = "absolute -left-16 text-xs font-semibold text-slate-400 -top-2.5 w-12 text-right select-none font-mono";
-                label.innerText = `${String(h).padStart(2, '0')}:00`;
-                gridContainer.appendChild(label);
-
-                // Linha Horizontal sutil
-                const line = document.createElement('div');
-                line.className = "absolute w-full border-b border-slate-100 left-0 pointer-events-none";
-                line.style.top = `${topPct}%`;
-                gridContainer.appendChild(line);
-            }
-
-            // Filtrar agendamentos do dia selecionado
-            const dateStr = getYYYYMMDD(state.selectedDate);
-            const dayEvents = state.appointments.filter(a => a.date === dateStr);
-
-            // CALCULAR SOBREPOSIÇÃO (OVERLAPPING EVENTS) LADO A LADO
-            const positionedEvents = computeEventPositions(dayEvents);
-
-            positionedEvents.forEach(evt => {
-                const startMins = timeToMinutes(evt.startTime);
-                const endMins = timeToMinutes(evt.endTime);
-                const dayStartMins = START_HOUR * 60;
-
-                const topPct = Math.max(0, ((startMins - dayStartMins) / totalMinRange) * 100);
-                const heightPct = Math.min(100 - topPct, ((endMins - startMins) / totalMinRange) * 100);
-
-                // Cálculo de largura e deslocamento horizontal
-                const colWidth = 98 / evt.maxCols;
-                const leftPos = evt.colIndex * colWidth;
-
-                const card = document.createElement('div');
-                card.className = "absolute rounded-xl bg-indigo-50 border-l-4 border-indigo-600 p-2.5 shadow-sm hover:shadow-md hover:border-indigo-700 transition cursor-pointer flex flex-col justify-between overflow-hidden ring-1 ring-slate-900/5";
-                card.style.top = `${topPct}%`;
-                card.style.height = `${Math.max(heightPct, 5)}%`;
-                card.style.left = `${leftPos}%`;
-                card.style.width = `${colWidth - 1}%`;
-                card.style.zIndex = 10 + evt.colIndex;
-
-                card.innerHTML = `
-                    <div class="flex items-start justify-between gap-1">
-                        <div class="truncate">
-                            <span class="text-xs font-extrabold text-indigo-950 block truncate">${evt.teacher}</span>
-                            <span class="text-[11px] font-medium text-indigo-700 block truncate">${evt.turma} • ${evt.room}</span>
-                        </div>
-                        <div class="bg-indigo-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md flex items-center space-x-0.5 shrink-0 shadow-sm">
-                            <span>💻</span> <span>${evt.qty}</span>
-                        </div>
-                    </div>
-                    <div class="text-[10px] font-bold text-indigo-500 mt-0.5 font-mono">
-                        ${evt.startTime} - ${evt.endTime}
-                    </div>
-                `;
-
-                card.onclick = () => openDetailsModal(evt);
-                gridContainer.appendChild(card);
-            });
-        }
-
-        // ALGORITMO DE POSICIONAMENTO PARA EVENTOS SOBREPOSTOS
-        function computeEventPositions(events) {
-            if (!events.length) return [];
-
-            const evs = events.map(e => ({
-                ...e,
-                startMins: timeToMinutes(e.startTime),
-                endMins: timeToMinutes(e.endTime)
-            })).sort((a,b) => a.startMins - b.startMins || (b.endMins - a.endMins));
-
-            const columns = [];
-            evs.forEach(ev => {
-                let placed = false;
-                for (let i = 0; i < columns.length; i++) {
-                    const lastInCol = columns[i][columns[i].length - 1];
-                    if (lastInCol.endMins <= ev.startMins) {
-                        columns[i].push(ev);
-                        ev.colIndex = i;
-                        placed = true;
-                        break;
-                    }
-                }
-                if (!placed) {
-                    ev.colIndex = columns.length;
-                    columns.push([ev]);
-                }
-            });
-
-            evs.forEach(ev => {
-                const overlapping = evs.filter(other => ev.startMins < other.endMins && other.startMins < ev.endMins);
-                const maxColIndex = Math.max(...overlapping.map(o => o.colIndex));
-                ev.maxCols = maxColIndex + 1;
-            });
-
-            return evs;
-        }
-
-        // --- 2. VISÃO DE SEMANA (CLEAN & MINIMALISTA) ---
-        function renderWeekView() {
-            const monday = getMonday(state.selectedDate);
-            const container = document.getElementById('weekColumnsContainer');
-            container.innerHTML = '';
-
-            for (let i = 0; i < 5; i++) { // Segunda a Sexta
-                const colDate = new Date(monday);
-                colDate.setDate(monday.getDate() + i);
-                const colDateStr = getYYYYMMDD(colDate);
-
-                // Atualizar cabeçalhos
-                const head = document.getElementById(`weekHead${i}`);
-                const isToday = colDateStr === getYYYYMMDD(new Date());
-                head.innerHTML = `
-                    <div class="${isToday ? 'text-indigo-600 font-extrabold' : ''}">
-                        ${colDate.toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase()}
-                        <div class="text-sm font-black ${isToday ? 'bg-indigo-600 text-white rounded-full w-6 h-6 mx-auto flex items-center justify-center mt-0.5' : 'text-slate-800'}">
-                            ${colDate.getDate()}
-                        </div>
-                    </div>
-                `;
-
-                // Colunas dos dias
-                const colEl = document.createElement('div');
-                colEl.className = "flex flex-col space-y-2 bg-slate-50/60 rounded-xl p-2 border border-slate-100 min-h-[450px]";
-
-                const dayEvents = state.appointments
-                    .filter(a => a.date === colDateStr)
-                    .sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
-
-                if (dayEvents.length === 0) {
-                    colEl.innerHTML = `<div class="text-center text-[11px] text-slate-300 py-8 font-medium">Livre</div>`;
-                } else {
-                    dayEvents.forEach(evt => {
-                        const card = document.createElement('div');
-                        card.className = "bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-400 transition cursor-pointer hover:shadow-md";
-                        card.innerHTML = `
-                            <div class="flex items-center justify-between text-[11px] font-bold text-indigo-600 mb-1 font-mono">
-                                <span>${evt.startTime} - ${evt.endTime}</span>
-                                <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-black">💻 ${evt.qty}</span>
-                            </div>
-                            <div class="font-bold text-xs text-slate-800 truncate">${evt.teacher}</div>
-                            <div class="text-[11px] font-medium text-slate-500 truncate">${evt.turma} • ${evt.room}</div>
-                        `;
-                        card.onclick = () => openDetailsModal(evt);
-                        colEl.appendChild(card);
-                    });
-                }
-
-                container.appendChild(colEl);
-            }
-        }
-
-        // --- 3. VISÃO DE LISTA ---
-        function renderListView() {
-            const tbody = document.getElementById('listTableBody');
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            tbody.innerHTML = '';
-
-            const filtered = state.appointments.filter(a => 
-                a.teacher.toLowerCase().includes(search) || 
-                a.turma.toLowerCase().includes(search) ||
-                a.room.toLowerCase().includes(search)
-            ).sort((a,b) => a.date.localeCompare(b.date) || timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
-
-            document.getElementById('listCounter').innerText = `${filtered.length} agendamento(s)`;
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400 text-xs">Nenhum agendamento encontrado</td></tr>`;
-                return;
-            }
-
-            filtered.forEach(evt => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition cursor-pointer";
-                
-                const [y, m, d] = evt.date.split('-');
-                const formattedDate = `${d}/${m}/${y}`;
-
-                tr.innerHTML = `
-                    <td class="py-3 px-4 font-bold text-slate-800">${formattedDate}</td>
-                    <td class="py-3 px-4 text-xs font-bold text-indigo-600 font-mono">${evt.startTime} - ${evt.endTime}</td>
-                    <td class="py-3 px-4 font-bold text-slate-700">${evt.teacher}</td>
-                    <td class="py-3 px-4 text-xs text-slate-500">${evt.turma} (${evt.room})</td>
-                    <td class="py-3 px-4 text-center font-extrabold text-slate-800">
-                        <span class="bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full text-xs">💻 ${evt.qty}</span>
-                    </td>
-                    <td class="py-3 px-4 text-right">
-                        <button class="btnView text-xs bg-slate-100 hover:bg-indigo-50 text-indigo-600 font-bold px-3 py-1.5 rounded-xl border border-slate-200 transition">
-                            Ver Detalhes
-                        </button>
-                    </td>
-                `;
-
-                tr.onclick = () => openDetailsModal(evt);
-                tbody.appendChild(tr);
-            });
-        }
-
-        // --- VALIDAÇÃO DE ESTOQUE EM TEMPO REAL NO FORMULÁRIO ---
-        function validateStockInForm() {
-            const date = document.getElementById('bookDate').value;
-            const startTime = document.getElementById('bookStart').value;
-            const endTime = document.getElementById('bookEnd').value;
-            const qty = parseInt(document.getElementById('bookQty').value) || 0;
-            const currentId = document.getElementById('bookingId').value;
-
-            const badge = document.getElementById('stockFeedbackBadge');
-            const alertBox = document.getElementById('stockAlertBox');
-            const submitBtn = document.getElementById('btnSubmitBooking');
-
-            if (!date || !startTime || !endTime) {
-                badge.innerText = "Aguardando horário...";
-                badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600";
-                alertBox.classList.add('hidden');
-                submitBtn.disabled = false;
-                return;
-            }
-
-            const reqStart = timeToMinutes(startTime);
-            const reqEnd = timeToMinutes(endTime);
-
-            if (reqEnd <= reqStart) {
-                badge.innerText = "Horário Inválido";
-                badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
-                alertBox.className = "text-xs p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 block font-medium";
-                alertBox.innerText = "⚠️ O horário de término deve ser posterior ao horário de início.";
-                submitBtn.disabled = true;
-                return;
-            }
-
-            // Calcular o pico de consumo concorrente no intervalo escolhido
-            let maxConcurrentUsed = 0;
-
-            const sameDayBookings = state.appointments.filter(a => a.date === date && a.id !== currentId);
-
-            for (let m = reqStart; m < reqEnd; m++) {
-                let mUsed = 0;
-                sameDayBookings.forEach(a => {
-                    const aStart = timeToMinutes(a.startTime);
-                    const aEnd = timeToMinutes(a.endTime);
-                    if (m >= aStart && m < aEnd) {
-                        mUsed += parseInt(a.qty);
-                    }
-                });
-                if (mUsed > maxConcurrentUsed) maxConcurrentUsed = mUsed;
-            }
-
-            const available = state.totalStock - maxConcurrentUsed;
-
-            if (available <= 0) {
-                badge.innerText = "Esgotado neste horário";
-                badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
-                alertBox.className = "text-xs p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 block font-medium";
-                alertBox.innerText = `❌ Lotação Máxima: Todos os ${state.totalStock} Chromebooks já estão reservados no intervalo escolhido.`;
-                submitBtn.disabled = true;
-            } else if (qty > available) {
-                badge.innerText = `Restam apenas ${available} de ${state.totalStock}`;
-                badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800";
-                alertBox.className = "text-xs p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 block font-medium";
-                alertBox.innerText = `⚠️ Quantidade indisponível! Você pediu ${qty}, mas há apenas ${available} Chromebooks livres neste horário. Por favor, selecione uma quantidade menor.`;
-                submitBtn.disabled = true;
-            } else {
-                badge.innerText = `🟢 Disponíveis: ${available} de ${state.totalStock}`;
-                badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800";
-                alertBox.className = "text-xs p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 block font-medium";
-                alertBox.innerText = `✅ Disponibilidade Confirmada! ${available} Chromebooks livres para reserva neste horário.`;
-                submitBtn.disabled = false;
-            }
-        }
-
-        // --- GERENCIAMENTO DE MODAIS E FLUXO DE PIN ---
-        function openDetailsModal(evt) {
-            state.activeAppointment = evt;
-            
-            document.getElementById('detailTeacher').innerText = evt.teacher;
-            const [y, m, d] = evt.date.split('-');
-            document.getElementById('detailDateTime').innerText = `${d}/${m}/${y} • ${evt.startTime} às ${evt.endTime}`;
-            document.getElementById('detailTurma').innerText = evt.turma;
-            document.getElementById('detailRoom').innerText = evt.room;
-            document.getElementById('detailQty').innerText = `💻 ${evt.qty} unidades`;
-
-            document.getElementById('modalDetails').classList.remove('hidden');
-        }
-
-        function closeDetailsModal() {
-            document.getElementById('modalDetails').classList.add('hidden');
-        }
-
-        function requestPinAuth(callback) {
-            const modalPin = document.getElementById('modalPinAuth');
-            const pinInput = document.getElementById('authPinInput');
-            const errField = document.getElementById('pinErrorMsg');
-
-            pinInput.value = '';
-            errField.classList.add('hidden');
-            modalPin.classList.remove('hidden');
-            pinInput.focus();
-
-            state.pendingAction = (enteredPin) => {
-                if (enteredPin === state.activeAppointment.pin || enteredPin === ADMIN_PIN) {
-                    modalPin.classList.add('hidden');
-                    callback();
-                } else {
-                    errField.classList.remove('hidden');
-                }
-            };
-        }
-
-        function openBookingModal(evt = null) {
-            const modal = document.getElementById('modalBooking');
-            const form = document.getElementById('formBooking');
-            form.reset();
-
-            const title = document.getElementById('modalBookingTitle');
-
-            if (evt) {
-                title.innerText = "Editar Agendamento";
-                document.getElementById('bookingId').value = evt.id;
-                document.getElementById('bookDate').value = evt.date;
-                document.getElementById('bookStart').value = evt.startTime;
-                document.getElementById('bookEnd').value = evt.endTime;
-                document.getElementById('bookTeacher').value = evt.teacher;
-                document.getElementById('bookTurma').value = evt.turma;
-                document.getElementById('bookRoom').value = evt.room;
-                document.getElementById('bookQty').value = evt.qty;
-                document.getElementById('bookPin').value = evt.pin;
-            } else {
-                title.innerText = "Novo Agendamento";
-                document.getElementById('bookingId').value = '';
-                document.getElementById('bookDate').value = getYYYYMMDD(state.selectedDate);
-                document.getElementById('bookStart').value = "07:30";
-                document.getElementById('bookEnd').value = "08:20";
-                document.getElementById('bookQty').value = 20;
-            }
-
-            modal.classList.remove('hidden');
-            validateStockInForm();
-        }
-
-        function closeBookingModal() {
-            document.getElementById('modalBooking').classList.add('hidden');
-        }
-
-        // --- EVENT LISTENERS ---
-        function setupEventListeners() {
-            // Abas de visualização
-            viewDay.onclick = () => { state.view = 'day'; render(); };
-            viewWeek.onclick = () => { state.view = 'week'; render(); };
-            viewList.onclick = () => { state.view = 'list'; render(); };
-
-            // Navegação de datas
-            document.getElementById('btnToday').onclick = () => {
-                state.selectedDate = new Date();
-                render();
-            };
-            document.getElementById('btnPrev').onclick = () => {
-                const days = state.view === 'week' ? 7 : 1;
-                state.selectedDate.setDate(state.selectedDate.getDate() - days);
-                render();
-            };
-            document.getElementById('btnNext').onclick = () => {
-                const days = state.view === 'week' ? 7 : 1;
-                state.selectedDate.setDate(state.selectedDate.getDate() + days);
-                render();
-            };
-
-            // Botão Novo Agendamento
-            document.getElementById('btnNewBooking').onclick = () => openBookingModal();
-
-            // Fechar modais
-            document.querySelectorAll('.btnCloseModal').forEach(b => {
-                b.onclick = () => {
-                    closeBookingModal();
-                    document.getElementById('modalSettings').classList.add('hidden');
-                };
-            });
-            document.querySelector('.btnCloseDetail').onclick = closeDetailsModal;
-
-            // Botões do Modal de Detalhes
-            document.getElementById('btnEditDetail').onclick = () => {
-                requestPinAuth(() => {
-                    closeDetailsModal();
-                    openBookingModal(state.activeAppointment);
-                });
-            };
-
-            document.getElementById('btnDeleteDetail').onclick = () => {
-                requestPinAuth(() => {
-                    state.appointments = state.appointments.filter(a => a.id !== state.activeAppointment.id);
-                    saveAppointments();
-                    closeDetailsModal();
-                    render();
-                });
-            };
-
-            // Confirmação de PIN
-            document.getElementById('btnConfirmPinAuth').onclick = () => {
-                const pinVal = document.getElementById('authPinInput').value;
-                if (state.pendingAction) state.pendingAction(pinVal);
-            };
-            document.getElementById('btnCancelPinAuth').onclick = () => {
-                document.getElementById('modalPinAuth').classList.add('hidden');
-            };
-
-            // Monitoramento em tempo real do formulário de agendamento
-            ['bookDate', 'bookStart', 'bookEnd', 'bookQty'].forEach(id => {
-                document.getElementById(id).addEventListener('input', validateStockInForm);
-            });
-
-            // Submissão do formulário de agendamento
-            document.getElementById('formBooking').onsubmit = (e) => {
-                e.preventDefault();
-                const id = document.getElementById('bookingId').value;
-                const date = document.getElementById('bookDate').value;
-                const startTime = document.getElementById('bookStart').value;
-                const endTime = document.getElementById('bookEnd').value;
-                const teacher = document.getElementById('bookTeacher').value.trim();
-                const turma = document.getElementById('bookTurma').value.trim();
-                const room = document.getElementById('bookRoom').value.trim();
-                const qty = parseInt(document.getElementById('bookQty').value);
-                const pin = document.getElementById('bookPin').value.trim();
-
-                if (id) {
-                    const idx = state.appointments.findIndex(a => a.id === id);
-                    if (idx !== -1) {
-                        state.appointments[idx] = { id, date, startTime, endTime, teacher, turma, room, qty, pin };
-                    }
-                } else {
-                    const newId = Date.now().toString();
-                    state.appointments.push({ id: newId, date, startTime, endTime, teacher, turma, room, qty, pin });
-                }
-
-                saveAppointments();
-                closeBookingModal();
-                render();
-            };
-
-            // Modal de Configuração do Estoque Total
-            document.getElementById('btnSettings').onclick = () => {
-                document.getElementById('settingStockInput').value = state.totalStock;
-                document.getElementById('modalSettings').classList.remove('hidden');
-            };
-
-            document.getElementById('formSettings').onsubmit = (e) => {
-                e.preventDefault();
-                const adminPin = document.getElementById('settingAdminPin').value;
-                if (adminPin !== ADMIN_PIN) {
-                    alert('PIN de Administrador incorreto!');
-                    return;
-                }
-
-                state.totalStock = parseInt(document.getElementById('settingStockInput').value);
-                saveStock();
-                document.getElementById('modalSettings').classList.add('hidden');
-                render();
-            };
-
-            // Campo de Busca
-            document.getElementById('searchInput').oninput = renderListView;
-        }
-    </script>
+        html += `
+            <button onclick="openBookingModal('07:30', '${dateStr}')" class="w-full py-1.5 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-400 hover:border-blue-400 hover:text-blue-600 transition">
+              + Agendar
+            </button>
+          </div>
+        `;
+      });
+
+      html += `</div></div>`;
+      container.innerHTML = html;
+    }
+
+    function renderListView(container, dateStr) {
+      let filtered = STATE.reservations.filter(r => r.date === dateStr);
+      if (STATE.filterQuery) {
+        filtered = filtered.filter(r => 
+          r.professor.toLowerCase().includes(STATE.filterQuery) ||
+          r.turma.toLowerCase().includes(STATE.filterQuery) ||
+          r.sala.toLowerCase().includes(STATE.filterQuery)
+        );
+      }
+
+      filtered.sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+
+      let html = `
+        <div class="p-6 max-w-4xl mx-auto w-full space-y-4">
+          <div class="flex justify-between items-center">
+            <h3 class="text-base font-bold text-slate-800">Agendamentos do Dia (${filtered.length})</h3>
+            <button onclick="openBookingModal('07:30', '${dateStr}')" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs shadow hover:bg-blue-700 transition">
+              + Novo Agendamento
+            </button>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
+                <tr>
+                  <th class="py-3 px-4">Horário</th>
+                  <th class="py-3 px-4">Professor</th>
+                  <th class="py-3 px-4">Sala/Turma</th>
+                  <th class="py-3 px-4 text-center">Quantidade</th>
+                  <th class="py-3 px-4 text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+      `;
+
+      if (filtered.length === 0) {
+        html += `<tr><td colspan="5" class="text-center py-8 text-slate-400">Nenhum agendamento para esta data.</td></tr>`;
+      } else {
+        filtered.forEach(r => {
+          html += `
+            <tr class="hover:bg-slate-50 transition">
+              <td class="py-3 px-4 font-bold text-slate-800">${r.startTime} - ${r.endTime}</td>
+              <td class="py-3 px-4 font-bold text-blue-600">${r.professor}</td>
+              <td class="py-3 px-4 text-slate-600">${r.sala} (${r.turma})</td>
+              <td class="py-3 px-4 text-center font-black">
+                <span class="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full">💻 ${r.quantity} un.</span>
+              </td>
+              <td class="py-3 px-4 text-right">
+                <button onclick="openDetailsModal('${r.id}')" class="text-blue-600 hover:text-blue-800 font-bold px-2 py-1 rounded hover:bg-blue-50 transition">
+                  Ver / Editar
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+      }
+
+      html += `</tbody></table></div></div>`;
+      container.innerHTML = html;
+    }
+  </script>
 </body>
 </html>
