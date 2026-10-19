@@ -73,7 +73,7 @@
         <button id="viewList" class="flex-1 sm:flex-none px-3 py-1 text-xs font-semibold rounded-lg text-slate-600 transition">Lista</button>
       </div>
 
-      <!-- Badge de Estoque (Apenas Leitura para Professores) -->
+      <!-- Badge de Estoque -->
       <div class="px-2.5 py-1.5 text-slate-600 bg-slate-100 rounded-xl font-semibold text-xs flex items-center gap-1.5 shrink-0">
         <i class="fa-solid fa-laptop text-blue-600"></i> Total: <span id="displayTotalStock" class="font-bold">50</span>
       </div>
@@ -276,7 +276,7 @@
         <button id="btnCloseAdmin" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
-      <!-- TELA DE LOGIN ADMIN (SE NÃO LOGADO) -->
+      <!-- TELA DE LOGIN ADMIN -->
       <div id="adminAuthBox" class="p-8 text-center space-y-4">
         <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl">
           <i class="fa-solid fa-lock"></i>
@@ -292,7 +292,7 @@
         <p class="text-[11px] text-slate-400 italic">Senha padrão inicial: <span class="font-bold text-slate-600">admin123</span></p>
       </div>
 
-      <!-- PAINEL COMPLETO ADMIN (SE LOGADO) -->
+      <!-- PAINEL COMPLETO ADMIN -->
       <div id="adminContentBox" class="hidden flex-1 flex flex-col overflow-hidden">
         <!-- Abas -->
         <div class="flex border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 shrink-0">
@@ -324,7 +324,7 @@
             </div>
           </div>
 
-          <!-- ABA 2: LISTA DE RESERVAS E AÇÕES DIRETAS -->
+          <!-- ABA 2: LISTA DE RESERVAS -->
           <div id="panelAdminList" class="hidden space-y-3">
             <div class="flex justify-between items-center">
               <h5 class="font-bold text-xs text-slate-700 uppercase">Todas as Reservas Cadastradas</h5>
@@ -351,7 +351,7 @@
           <div id="panelAdminFirebase" class="hidden space-y-4">
             <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 text-xs text-amber-800 space-y-1">
               <p class="font-bold">🔥 Sincronização em Nuvem em Tempo Real</p>
-              <p>Cole abaixo as suas chaves do Firebase. Elas serão salvas e ativadas imediatamente em todos os dispositivos.</p>
+              <p>Você pode colar as chaves aqui ou diretamente no código fonte do arquivo index.html no GitHub.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -375,7 +375,7 @@
 
             <div class="pt-2 flex justify-end">
               <button id="btnSaveFirebaseConfig" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition">
-                Salvar e Conectar Firebase
+                Salvar e Conectar
               </button>
             </div>
           </div>
@@ -391,7 +391,22 @@
     </div>
   </div>
 
+  <!-- SCRIPT DE FUNCIONAMENTO -->
   <script>
+    // =========================================================================
+    // ⬇️ COLE SUAS CHAVES DO FIREBASE ABAIXO (ENTRE AS ASPAS) ⬇️
+    // =========================================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0YKiDNXvacxMBGXGVvd2QJd-LJQuv2YI",
+      authDomain: "agendamento-chromebook-d98f2.firebaseapp.com",
+      databaseURL: "https://agendamento-chromebook-d98f2-default-rtdb.firebaseio.com",
+      projectId: "agendamento-chromebook-d98f2",
+      storageBucket: "agendamento-chromebook-d98f2.firebasestorage.app",
+      messagingSenderId: "170568705061",
+      appId: "1:170568705061:web:c18ff9d09596fa39d08bcc"
+  };
+    // =========================================================================
+
     // ESTADO GLOBAL
     const STATE = {
       totalStock: parseInt(localStorage.getItem('chromebook_stock')) || 50,
@@ -421,14 +436,20 @@
       }
     });
 
-    function getFirebaseConfig() {
-      const saved = localStorage.getItem('chromebook_fb_config');
-      if (saved) return JSON.parse(saved);
-      return { apiKey: "", authDomain: "", databaseURL: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
-    }
-
     function initFirebase() {
-      const config = getFirebaseConfig();
+      // Prioridade 1: Usa as chaves coladas no código acima.
+      // Prioridade 2: Usa as chaves salvas no Admin/LocalStorage.
+      let config = firebaseConfig;
+      const savedConfig = localStorage.getItem('chromebook_fb_config');
+      if (savedConfig) {
+        try {
+          const parsed = JSON.parse(savedConfig);
+          if (parsed.databaseURL && parsed.databaseURL.trim() !== "") {
+            config = parsed;
+          }
+        } catch(e) {}
+      }
+
       if (config.databaseURL && config.databaseURL.trim() !== "") {
         try {
           if (!firebase.apps.length) {
@@ -542,7 +563,6 @@
       document.getElementById('btnLoginAdmin').addEventListener('click', performAdminLogin);
       document.getElementById('btnLogoutAdmin').addEventListener('click', performAdminLogout);
 
-      // Abas do Admin
       document.getElementById('tabAdminConfig').addEventListener('click', () => switchAdminTab('config'));
       document.getElementById('tabAdminList').addEventListener('click', () => switchAdminTab('list'));
       document.getElementById('tabAdminFirebase').addEventListener('click', () => switchAdminTab('firebase'));
@@ -579,7 +599,7 @@
           storageBucket: "", messagingSenderId: "", appId: ""
         };
         localStorage.setItem('chromebook_fb_config', JSON.stringify(config));
-        alert("✅ Configuração salva! Recarregando página para aplicar...");
+        alert("✅ Configuração salva! Recarregando para conectar...");
         window.location.reload();
       });
 
@@ -640,11 +660,10 @@
       document.getElementById('adminContentBox').classList.remove('hidden');
       document.getElementById('inputAdminTotalStock').value = STATE.totalStock;
 
-      const fb = getFirebaseConfig();
-      document.getElementById('fbApiKey').value = fb.apiKey || "";
-      document.getElementById('fbAuthDomain').value = fb.authDomain || "";
-      document.getElementById('fbDatabaseURL').value = fb.databaseURL || "";
-      document.getElementById('fbProjectId').value = fb.projectId || "";
+      document.getElementById('fbApiKey').value = firebaseConfig.apiKey || "";
+      document.getElementById('fbAuthDomain').value = firebaseConfig.authDomain || "";
+      document.getElementById('fbDatabaseURL').value = firebaseConfig.databaseURL || "";
+      document.getElementById('fbProjectId').value = firebaseConfig.projectId || "";
 
       renderAdminBookingsTable();
     }
