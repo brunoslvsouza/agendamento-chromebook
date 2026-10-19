@@ -64,7 +64,7 @@
       <!-- Indicador do Firebase -->
       <div id="dbStatusBadge" class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
         <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-        <span id="dbStatusText">Local</span>
+        <span id="dbStatusText">Modo Local</span>
       </div>
 
       <div class="bg-slate-100 p-1 rounded-xl flex space-x-1 border border-slate-200 w-full sm:w-auto justify-center">
@@ -73,8 +73,14 @@
         <button id="viewList" class="flex-1 sm:flex-none px-3 py-1 text-xs font-semibold rounded-lg text-slate-600 transition">Lista</button>
       </div>
 
-      <button id="btnOpenConfig" class="px-2.5 py-1.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold text-xs transition flex items-center gap-1.5 shrink-0">
-        <i class="fa-solid fa-sliders text-blue-600"></i> <span class="hidden md:inline">Estoque</span> (<span id="displayTotalStock">30</span>)
+      <!-- Badge de Estoque (Apenas Leitura para Professores) -->
+      <div class="px-2.5 py-1.5 text-slate-600 bg-slate-100 rounded-xl font-semibold text-xs flex items-center gap-1.5 shrink-0">
+        <i class="fa-solid fa-laptop text-blue-600"></i> Total: <span id="displayTotalStock" class="font-bold">50</span>
+      </div>
+
+      <!-- Botão do Painel Admin -->
+      <button id="btnOpenAdmin" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs shadow transition flex items-center gap-1.5 shrink-0">
+        <i class="fa-solid fa-user-shield text-amber-400"></i> Admin
       </button>
 
       <button id="btnOpenNewModal" class="hidden sm:flex px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-md transition items-center gap-1.5 shrink-0">
@@ -110,7 +116,7 @@
               <p class="text-[10px] text-slate-500">Reservas hoje</p>
             </div>
             <div class="text-right">
-              <p class="text-2xl font-black text-blue-600" id="statPeakUsed">0/30</p>
+              <p class="text-2xl font-black text-blue-600" id="statPeakUsed">0/50</p>
               <p class="text-[10px] text-slate-500">Pico em uso</p>
             </div>
           </div>
@@ -195,9 +201,9 @@
           <input type="number" id="inputQty" min="1" required placeholder="Ex: 25" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
-        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <div id="pinBox" class="bg-slate-50 p-3 rounded-xl border border-slate-200">
           <label class="block text-xs font-bold text-slate-700 mb-1">PIN de Segurança (4 dígitos) *</label>
-          <p class="text-[10px] text-slate-500 mb-2">Senha para alterar/cancelar esta reserva depois.</p>
+          <p class="text-[10px] text-slate-500 mb-2">Crie uma senha numérica de 4 dígitos para alterar ou cancelar depois.</p>
           <input type="password" id="inputPin" maxlength="4" pattern="[0-9]{4}" required placeholder="Ex: 1234" class="w-28 px-3 py-1.5 border border-slate-300 rounded-lg text-sm text-center font-bold tracking-widest focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
@@ -205,7 +211,7 @@
 
         <div class="pt-3 border-t border-slate-100 flex justify-end space-x-2 shrink-0">
           <button type="button" id="btnCancelModal" class="px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">Cancelar</button>
-          <button type="submit" id="btnSaveBooking" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow transition">Confirmar</button>
+          <button type="submit" id="btnSaveBooking" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow transition">Confirmar Agendamento</button>
         </div>
       </form>
     </div>
@@ -247,51 +253,150 @@
 
         <div class="pt-2 flex justify-between items-center gap-2">
           <button id="btnDeleteDetail" class="flex-1 px-3 py-2 border border-rose-300 text-rose-600 hover:bg-rose-50 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1">
-            <i class="fa-solid fa-trash-can"></i> Cancelar
+            <i class="fa-solid fa-trash-can"></i> Cancelar Reserva
           </button>
           <button id="btnEditDetail" class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1 shadow">
-            <i class="fa-solid fa-pen-to-square"></i> Editar
+            <i class="fa-solid fa-pen-to-square"></i> Editar Reserva
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL CONFIG -->
-  <div id="modalConfig" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
-      <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-        <h3 class="text-sm font-bold text-slate-800">Estoque Total de Chromebooks</h3>
-        <button id="btnCloseConfig" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+  <!-- MODAL PAINEL ADMIN -->
+  <div id="modalAdmin" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+      
+      <!-- Cabeçalho Admin -->
+      <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-user-shield text-amber-400 text-lg"></i>
+          <h3 class="text-base font-bold">Painel do Administrador</h3>
+        </div>
+        <button id="btnCloseAdmin" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
-      <div class="p-6 space-y-4">
-        <p class="text-xs text-slate-500">Quantidade total de Chromebooks operacionais da escola.</p>
+
+      <!-- TELA DE LOGIN ADMIN (SE NÃO LOGADO) -->
+      <div id="adminAuthBox" class="p-8 text-center space-y-4">
+        <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl">
+          <i class="fa-solid fa-lock"></i>
+        </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Quantidade Total</label>
-          <input type="number" id="inputTotalStock" min="1" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <h4 class="font-bold text-slate-800 text-base">Acesso Restrito</h4>
+          <p class="text-xs text-slate-500">Digite a senha de administrador para gerenciar o sistema.</p>
         </div>
-        <div class="flex justify-end space-x-3 pt-2">
-          <button id="btnSaveConfig" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar Alteração</button>
+        <div class="max-w-xs mx-auto space-y-2">
+          <input type="password" id="inputAdminPassword" placeholder="Senha do Admin" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm text-center font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          <button id="btnLoginAdmin" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition">Entrar no Painel</button>
+        </div>
+        <p class="text-[11px] text-slate-400 italic">Senha padrão inicial: <span class="font-bold text-slate-600">admin123</span></p>
+      </div>
+
+      <!-- PAINEL COMPLETO ADMIN (SE LOGADO) -->
+      <div id="adminContentBox" class="hidden flex-1 flex flex-col overflow-hidden">
+        <!-- Abas -->
+        <div class="flex border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 shrink-0">
+          <button id="tabAdminConfig" class="px-5 py-3 border-b-2 border-amber-500 text-amber-600 bg-white">⚙️ Configurações</button>
+          <button id="tabAdminList" class="px-5 py-3 border-b-2 border-transparent hover:text-slate-900">📋 Gerenciar Reservas</button>
+          <button id="tabAdminFirebase" class="px-5 py-3 border-b-2 border-transparent hover:text-slate-900">🔥 Conexão Firebase</button>
+        </div>
+
+        <div class="p-6 overflow-y-auto space-y-6 flex-1">
+          
+          <!-- ABA 1: CONFIGURAÇÕES -->
+          <div id="panelAdminConfig" class="space-y-5">
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Estoque Total de Chromebooks</h5>
+              <p class="text-xs text-slate-500">Ajuste a quantidade máxima de aparelhos disponíveis na escola.</p>
+              <div class="flex items-center gap-3">
+                <input type="number" id="inputAdminTotalStock" min="1" max="200" class="w-32 px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-center">
+                <button id="btnSaveAdminStock" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar Estoque</button>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Alterar Senha do Admin</h5>
+              <p class="text-xs text-slate-500">Defina uma nova senha de acesso ao Painel de Administrador.</p>
+              <div class="flex items-center gap-3">
+                <input type="password" id="inputNewAdminPass" placeholder="Nova Senha Admin" class="w-48 px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold">
+                <button id="btnSaveAdminPass" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition">Atualizar Senha</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ABA 2: LISTA DE RESERVAS E AÇÕES DIRETAS -->
+          <div id="panelAdminList" class="hidden space-y-3">
+            <div class="flex justify-between items-center">
+              <h5 class="font-bold text-xs text-slate-700 uppercase">Todas as Reservas Cadastradas</h5>
+              <span class="text-xs text-slate-500 font-semibold">Total: <span id="adminTotalBookingsCount">0</span></span>
+            </div>
+            <div class="border border-slate-200 rounded-xl overflow-hidden">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-100 border-b border-slate-200 font-bold text-slate-600">
+                  <tr>
+                    <th class="p-2.5">Data / Hora</th>
+                    <th class="p-2.5">Professor</th>
+                    <th class="p-2.5">Turma/Sala</th>
+                    <th class="p-2.5 text-center">Qtd</th>
+                    <th class="p-2.5 text-right">Ações Rápidas</th>
+                  </tr>
+                </thead>
+                <tbody id="adminBookingsTableBody" class="divide-y divide-slate-100">
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ABA 3: CONFIGURAÇÃO FIREBASE -->
+          <div id="panelAdminFirebase" class="hidden space-y-4">
+            <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 text-xs text-amber-800 space-y-1">
+              <p class="font-bold">🔥 Sincronização em Nuvem em Tempo Real</p>
+              <p>Cole abaixo as suas chaves do Firebase. Elas serão salvas e ativadas imediatamente em todos os dispositivos.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">apiKey</label>
+                <input type="text" id="fbApiKey" class="w-full px-3 py-1.5 border rounded-lg font-mono text-[11px]">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">authDomain</label>
+                <input type="text" id="fbAuthDomain" class="w-full px-3 py-1.5 border rounded-lg font-mono text-[11px]">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">databaseURL</label>
+                <input type="text" id="fbDatabaseURL" class="w-full px-3 py-1.5 border rounded-lg font-mono text-[11px]">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">projectId</label>
+                <input type="text" id="fbProjectId" class="w-full px-3 py-1.5 border rounded-lg font-mono text-[11px]">
+              </div>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+              <button id="btnSaveFirebaseConfig" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition">
+                Salvar e Conectar Firebase
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="bg-slate-100 px-6 py-3 border-t border-slate-200 flex justify-between items-center shrink-0">
+          <span class="text-xs text-slate-500 font-semibold">Sessão Admin Ativa</span>
+          <button id="btnLogoutAdmin" class="text-xs text-rose-600 hover:text-rose-800 font-bold">Sair do Modo Admin</button>
         </div>
       </div>
+
     </div>
   </div>
 
   <script>
-    // =========================================================================
-    // COLE SUAS CHAVES DO FIREBASE ABAIXO DENTRO DAS ASPAS
-    // =========================================================================
-    const firebaseConfig = {
-      apiKey: "AIzaSyD0YKiDNXvacxMBGXGVvd2QJd-LJQuv2YI",
-      authDomain: "agendamento-chromebook-d98f2.firebaseapp.com",
-      projectId: "agendamento-chromebook-d98f2",
-      storageBucket: "agendamento-chromebook-d98f2.firebasestorage.app",
-      messagingSenderId: "170568705061",
-      appId: "1:170568705061:web:c18ff9d09596fa39d08bcc"
-    };
-
+    // ESTADO GLOBAL
     const STATE = {
-      totalStock: parseInt(localStorage.getItem('chromebook_stock')) || 30,
+      totalStock: parseInt(localStorage.getItem('chromebook_stock')) || 50,
+      adminPassword: localStorage.getItem('chromebook_admin_pass') || 'admin123',
+      isAdmin: false,
       reservations: [],
       currentDate: new Date(),
       currentView: 'day',
@@ -302,8 +407,6 @@
 
     const START_HOUR = 7;
     const END_HOUR = 21;
-    const MASTER_PIN = "9999";
-
     let dbRef = null;
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -318,10 +421,19 @@
       }
     });
 
+    function getFirebaseConfig() {
+      const saved = localStorage.getItem('chromebook_fb_config');
+      if (saved) return JSON.parse(saved);
+      return { apiKey: "", authDomain: "", databaseURL: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
+    }
+
     function initFirebase() {
-      if (firebaseConfig.databaseURL && firebaseConfig.databaseURL.trim() !== "") {
+      const config = getFirebaseConfig();
+      if (config.databaseURL && config.databaseURL.trim() !== "") {
         try {
-          firebase.initializeApp(firebaseConfig);
+          if (!firebase.apps.length) {
+            firebase.initializeApp(config);
+          }
           dbRef = firebase.database().ref('reservations');
           
           dbRef.on('value', (snapshot) => {
@@ -334,9 +446,10 @@
             STATE.dbConnected = true;
             updateStatusBadge(true);
             renderCurrentView();
+            if (STATE.isAdmin) renderAdminBookingsTable();
           });
         } catch (e) {
-          console.error("Erro ao conectar no Firebase:", e);
+          console.error("Erro no Firebase:", e);
           updateStatusBadge(false);
         }
       } else {
@@ -349,7 +462,7 @@
       const text = document.getElementById('dbStatusText');
       if (connected) {
         badge.className = "hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
-        text.innerText = "Nuvem Ok";
+        text.innerText = "Nuvem Conectada";
       } else {
         badge.className = "hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200";
         text.innerText = "Modo Local";
@@ -371,10 +484,8 @@
     }
 
     function setupEventListeners() {
-      // Sidebar Mobile Toggle
       const sidebar = document.getElementById('sidebar');
       const overlay = document.getElementById('sidebarOverlay');
-      
       const toggleSidebar = () => {
         sidebar.classList.toggle('-translate-x-full');
         overlay.classList.toggle('hidden');
@@ -425,6 +536,54 @@
         renderCurrentView();
       });
 
+      // MODAL PAINEL ADMIN
+      document.getElementById('btnOpenAdmin').addEventListener('click', openAdminModal);
+      document.getElementById('btnCloseAdmin').addEventListener('click', closeAdminModal);
+      document.getElementById('btnLoginAdmin').addEventListener('click', performAdminLogin);
+      document.getElementById('btnLogoutAdmin').addEventListener('click', performAdminLogout);
+
+      // Abas do Admin
+      document.getElementById('tabAdminConfig').addEventListener('click', () => switchAdminTab('config'));
+      document.getElementById('tabAdminList').addEventListener('click', () => switchAdminTab('list'));
+      document.getElementById('tabAdminFirebase').addEventListener('click', () => switchAdminTab('firebase'));
+
+      document.getElementById('btnSaveAdminStock').addEventListener('click', () => {
+        const val = parseInt(document.getElementById('inputAdminTotalStock').value);
+        if (val && val > 0) {
+          STATE.totalStock = val;
+          localStorage.setItem('chromebook_stock', val);
+          document.getElementById('displayTotalStock').innerText = val;
+          alert("✅ Estoque total atualizado para " + val + " Chromebooks!");
+          renderCurrentView();
+        }
+      });
+
+      document.getElementById('btnSaveAdminPass').addEventListener('click', () => {
+        const pass = document.getElementById('inputNewAdminPass').value.trim();
+        if (pass.length >= 4) {
+          STATE.adminPassword = pass;
+          localStorage.setItem('chromebook_admin_pass', pass);
+          alert("✅ Senha do Admin alterada com sucesso!");
+          document.getElementById('inputNewAdminPass').value = "";
+        } else {
+          alert("⚠️ A senha deve ter no mínimo 4 caracteres.");
+        }
+      });
+
+      document.getElementById('btnSaveFirebaseConfig').addEventListener('click', () => {
+        const config = {
+          apiKey: document.getElementById('fbApiKey').value.trim(),
+          authDomain: document.getElementById('fbAuthDomain').value.trim(),
+          databaseURL: document.getElementById('fbDatabaseURL').value.trim(),
+          projectId: document.getElementById('fbProjectId').value.trim(),
+          storageBucket: "", messagingSenderId: "", appId: ""
+        };
+        localStorage.setItem('chromebook_fb_config', JSON.stringify(config));
+        alert("✅ Configuração salva! Recarregando página para aplicar...");
+        window.location.reload();
+      });
+
+      // Form Reserva
       document.getElementById('btnOpenNewModal').addEventListener('click', () => openBookingModal());
       document.getElementById('btnOpenNewModalMobile').addEventListener('click', () => openBookingModal());
       document.getElementById('btnCloseModal').addEventListener('click', closeBookingModal);
@@ -433,24 +592,6 @@
       document.getElementById('btnCloseDetails').addEventListener('click', closeDetailsModal);
       document.getElementById('btnDeleteDetail').addEventListener('click', handleDeleteFromDetails);
       document.getElementById('btnEditDetail').addEventListener('click', handleEditFromDetails);
-
-      document.getElementById('btnOpenConfig').addEventListener('click', () => {
-        document.getElementById('inputTotalStock').value = STATE.totalStock;
-        document.getElementById('modalConfig').classList.remove('hidden');
-      });
-      document.getElementById('btnCloseConfig').addEventListener('click', () => {
-        document.getElementById('modalConfig').classList.add('hidden');
-      });
-      document.getElementById('btnSaveConfig').addEventListener('click', () => {
-        const val = parseInt(document.getElementById('inputTotalStock').value);
-        if (val && val > 0) {
-          STATE.totalStock = val;
-          localStorage.setItem('chromebook_stock', val);
-          document.getElementById('displayTotalStock').innerText = val;
-          document.getElementById('modalConfig').classList.add('hidden');
-          renderCurrentView();
-        }
-      });
 
       ['inputDate', 'inputStartTime', 'inputEndTime', 'inputQty'].forEach(id => {
         document.getElementById(id).addEventListener('input', validateStockInModal);
@@ -462,10 +603,114 @@
       });
     }
 
-    function formatDateIso(dateObj) {
-      return dateObj.toISOString().split('T')[0];
+    function openAdminModal() {
+      document.getElementById('modalAdmin').classList.remove('hidden');
+      if (STATE.isAdmin) {
+        showAdminContent();
+      } else {
+        document.getElementById('adminAuthBox').classList.remove('hidden');
+        document.getElementById('adminContentBox').classList.add('hidden');
+      }
     }
 
+    function closeAdminModal() {
+      document.getElementById('modalAdmin').classList.add('hidden');
+    }
+
+    function performAdminLogin() {
+      const pass = document.getElementById('inputAdminPassword').value;
+      if (pass === STATE.adminPassword) {
+        STATE.isAdmin = true;
+        showAdminContent();
+        document.getElementById('inputAdminPassword').value = "";
+      } else {
+        alert("❌ Senha de Admin incorreta!");
+      }
+    }
+
+    function performAdminLogout() {
+      STATE.isAdmin = false;
+      document.getElementById('adminAuthBox').classList.remove('hidden');
+      document.getElementById('adminContentBox').classList.add('hidden');
+      renderCurrentView();
+    }
+
+    function showAdminContent() {
+      document.getElementById('adminAuthBox').classList.add('hidden');
+      document.getElementById('adminContentBox').classList.remove('hidden');
+      document.getElementById('inputAdminTotalStock').value = STATE.totalStock;
+
+      const fb = getFirebaseConfig();
+      document.getElementById('fbApiKey').value = fb.apiKey || "";
+      document.getElementById('fbAuthDomain').value = fb.authDomain || "";
+      document.getElementById('fbDatabaseURL').value = fb.databaseURL || "";
+      document.getElementById('fbProjectId').value = fb.projectId || "";
+
+      renderAdminBookingsTable();
+    }
+
+    function switchAdminTab(tabName) {
+      const tabs = ['config', 'list', 'firebase'];
+      tabs.forEach(t => {
+        const btn = document.getElementById('tabAdmin' + t.charAt(0).toUpperCase() + t.slice(1));
+        const panel = document.getElementById('panelAdmin' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (t === tabName) {
+          btn.className = "px-5 py-3 border-b-2 border-amber-500 text-amber-600 bg-white";
+          panel.classList.remove('hidden');
+        } else {
+          btn.className = "px-5 py-3 border-b-2 border-transparent hover:text-slate-900";
+          panel.classList.add('hidden');
+        }
+      });
+
+      if (tabName === 'list') renderAdminBookingsTable();
+    }
+
+    function renderAdminBookingsTable() {
+      const tbody = document.getElementById('adminBookingsTableBody');
+      tbody.innerHTML = "";
+      document.getElementById('adminTotalBookingsCount').innerText = STATE.reservations.length;
+
+      const sorted = [...STATE.reservations].sort((a,b) => a.date.localeCompare(b.date));
+
+      if (sorted.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">Nenhuma reserva cadastrada.</td></tr>`;
+        return;
+      }
+
+      sorted.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition";
+        tr.innerHTML = `
+          <td class="p-2.5 font-bold text-slate-800">${r.date}<br><span class="text-slate-500 font-normal">${r.startTime}-${r.endTime}</span></td>
+          <td class="p-2.5 font-bold text-blue-600">${r.professor}</td>
+          <td class="p-2.5 text-slate-600">${r.sala} (${r.turma})</td>
+          <td class="p-2.5 text-center font-black">💻 ${r.quantity}</td>
+          <td class="p-2.5 text-right space-x-1">
+            <button onclick="adminEditBooking('${r.id}')" class="px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold rounded">Editar</button>
+            <button onclick="adminDeleteBooking('${r.id}')" class="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded">Excluir</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function adminEditBooking(id) {
+      const booking = STATE.reservations.find(r => r.id === id);
+      if (booking) {
+        closeAdminModal();
+        openBookingModal(null, null, booking);
+      }
+    }
+
+    function adminDeleteBooking(id) {
+      if (confirm("Admin: Tem certeza que deseja excluir esta reserva diretamente sem PIN?")) {
+        deleteBookingData(id);
+        renderAdminBookingsTable();
+      }
+    }
+
+    function formatDateIso(dateObj) { return dateObj.toISOString().split('T')[0]; }
     function timeToMinutes(timeStr) {
       if (!timeStr) return 0;
       const [h, m] = timeStr.split(':').map(Number);
@@ -640,14 +885,20 @@
       const booking = STATE.reservations.find(r => r.id === STATE.selectedBookingId);
       if (!booking) return;
 
+      if (STATE.isAdmin) {
+        closeDetailsModal();
+        openBookingModal(null, null, booking);
+        return;
+      }
+
       const userPin = prompt("Digite o PIN de 4 dígitos cadastrado nesta reserva:");
       if (!userPin) return;
 
-      if (userPin === booking.pin || userPin === MASTER_PIN) {
+      if (userPin === booking.pin) {
         closeDetailsModal();
         openBookingModal(null, null, booking);
       } else {
-        alert("❌ PIN incorreto! Apenas o próprio professor ou o admin podem alterar.");
+        alert("❌ PIN incorreto!");
       }
     }
 
@@ -655,22 +906,34 @@
       const booking = STATE.reservations.find(r => r.id === STATE.selectedBookingId);
       if (!booking) return;
 
-      const userPin = prompt("Para cancelar, digite o PIN de 4 dígitos cadastrado nesta reserva:");
+      if (STATE.isAdmin) {
+        if (confirm(`Admin: Cancelar reserva de ${booking.professor}?`)) {
+          deleteBookingData(booking.id);
+          closeDetailsModal();
+        }
+        return;
+      }
+
+      const userPin = prompt("Para cancelar, digite o PIN de 4 dígitos desta reserva:");
       if (!userPin) return;
 
-      if (userPin === booking.pin || userPin === MASTER_PIN) {
+      if (userPin === booking.pin) {
         if (confirm(`Confirmar cancelamento da reserva de ${booking.professor}?`)) {
-          if (STATE.dbConnected && dbRef) {
-            dbRef.child(booking.id).remove();
-          } else {
-            STATE.reservations = STATE.reservations.filter(r => r.id !== booking.id);
-            localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.reservations));
-            renderCurrentView();
-          }
+          deleteBookingData(booking.id);
           closeDetailsModal();
         }
       } else {
-        alert("❌ PIN incorreto! Agendamento mantido.");
+        alert("❌ PIN incorreto!");
+      }
+    }
+
+    function deleteBookingData(id) {
+      if (STATE.dbConnected && dbRef) {
+        dbRef.child(id).remove();
+      } else {
+        STATE.reservations = STATE.reservations.filter(r => r.id !== id);
+        localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.reservations));
+        renderCurrentView();
       }
     }
 
@@ -724,7 +987,6 @@
           </div>
 
           <div class="flex-1 overflow-y-auto relative flex">
-            <!-- Régua de Horas -->
             <div class="w-12 md:w-16 bg-slate-50 border-r border-slate-200 shrink-0 text-slate-400 font-mono text-[10px] md:text-xs select-none">
       `;
 
@@ -768,18 +1030,12 @@
         `;
       });
 
-      html += `
-            </div>
-          </div>
-        </div>
-      `;
-
+      html += `</div></div></div>`;
       container.innerHTML = html;
     }
 
     function computeOverlappingLayout(events) {
       if (!events || events.length === 0) return [];
-
       const sorted = [...events].sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
       const results = [];
       const columns = [];
@@ -787,7 +1043,6 @@
       sorted.forEach(evt => {
         const start = timeToMinutes(evt.startTime);
         const end = timeToMinutes(evt.endTime);
-
         let placed = false;
         for (let i = 0; i < columns.length; i++) {
           if (columns[i] <= start) {
@@ -797,7 +1052,6 @@
             break;
           }
         }
-
         if (!placed) {
           columns.push(end);
           results.push({ event: evt, column: columns.length - 1, totalColumns: 1 });
