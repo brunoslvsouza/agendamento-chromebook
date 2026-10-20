@@ -53,7 +53,7 @@
               <option value="tablet">Tablets</option>
             </select>
           </div>
-          <p class="text-[10px] md:text-xs text-slate-500 font-medium hidden sm:block">Agendamento - Bento Benedini</p>
+          <p id="headerSubTitle" class="text-[10px] md:text-xs text-slate-500 font-medium hidden sm:block">Agendamento - Bento Benedini</p>
         </div>
       </div>
 
@@ -147,7 +147,7 @@
         </div>
       </div>
 
-      <div class="text-[11px] text-slate-400 text-center pt-4 border-t border-slate-100">
+      <div id="sidebarFooterText" class="text-[11px] text-slate-400 text-center pt-4 border-t border-slate-100">
         Controle de Equipamentos
       </div>
     </aside>
@@ -306,7 +306,7 @@
     </div>
   </div>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (COM Z-INDEX 70 PARA FICAR POR CIMA DO ADMIN) -->
+  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (SOBREPOSIÇÃO PRIORITÁRIA Z-INDEX 70) -->
   <div id="modalConfirmCancel" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] hidden p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 p-6 space-y-4">
       <div class="flex items-center gap-3 text-rose-600">
@@ -361,7 +361,7 @@
 
       <div id="adminContentBox" class="hidden flex-1 flex flex-col overflow-hidden">
         <div class="flex border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 shrink-0">
-          <button id="tabAdminConfig" class="px-5 py-3 border-b-2 border-amber-500 text-amber-600 bg-white">⚙️ Configurações</button>
+          <button id="tabAdminConfig" class="px-5 py-3 border-b-2 border-amber-500 text-amber-600 bg-white">⚙️ Personalização & Configurações</button>
           <button id="tabAdminList" class="px-5 py-3 border-b-2 border-transparent hover:text-slate-900">📋 Gerenciar Reservas</button>
           <button id="tabAdminFirebase" class="px-5 py-3 border-b-2 border-transparent hover:text-slate-900">🔥 Conexão Firebase</button>
         </div>
@@ -369,21 +369,44 @@
         <div class="p-6 overflow-y-auto space-y-6 flex-1">
           
           <div id="panelAdminConfig" class="space-y-5">
+            <!-- PERSONALIZAÇÃO DE IMAGENS E TEXTOS DO SITE -->
             <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-200 space-y-3">
-              <h5 class="font-bold text-xs text-blue-900 uppercase tracking-wider">🎨 Personalização da Escola (Logo e Favicon)</h5>
-              <p class="text-xs text-slate-500">Cole os links das imagens da logo da escola e do ícone que fica na aba do navegador.</p>
+              <h5 class="font-bold text-xs text-blue-900 uppercase tracking-wider">🎨 Personalização do Site e Imagens</h5>
+              <p class="text-xs text-slate-500">Faça upload da logo da escola e do favicon diretamente do seu dispositivo, e edite os textos do site.</p>
               
-              <div class="space-y-2 text-xs">
-                <div>
-                  <label class="block font-bold text-slate-700 mb-1">URL da Logo da Escola</label>
-                  <input type="url" id="inputAdminLogoUrl" placeholder="https://exemplo.com/logo-escola.png" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono">
+              <div class="space-y-3 text-xs">
+                <!-- Upload de Logo -->
+                <div class="space-y-1">
+                  <label class="block font-bold text-slate-700">Logo da Escola (Upload de Imagem)</label>
+                  <input type="file" id="inputAdminLogoFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                  <p class="text-[10px] text-slate-400">Ou cole a URL direta de uma imagem na web:</p>
+                  <input type="url" id="inputAdminLogoUrl" placeholder="https://exemplo.com/logo-escola.png" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono">
                 </div>
-                <div>
-                  <label class="block font-bold text-slate-700 mb-1">URL do Ícone da Aba (Favicon)</label>
-                  <input type="url" id="inputAdminFaviconUrl" placeholder="https://exemplo.com/favicon.ico" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono">
+
+                <!-- Upload de Favicon -->
+                <div class="space-y-1">
+                  <label class="block font-bold text-slate-700">Ícone da Aba do Navegador - Favicon (Upload)</label>
+                  <input type="file" id="inputAdminFaviconFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                  <input type="url" id="inputAdminFaviconUrl" placeholder="https://exemplo.com/favicon.ico" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono mt-1">
                 </div>
-                <div class="pt-1 flex justify-end">
-                  <button id="btnSaveAdminBranding" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar Logo e Favicon</button>
+
+                <!-- Edição de Textos do Site -->
+                <div class="pt-2 border-t border-blue-200/60 space-y-2">
+                  <h6 class="font-bold text-blue-900">📝 Editar Textos e Nomes do Site</h6>
+                  <div>
+                    <label class="block font-bold text-slate-700 mb-1">Subtítulo do Cabeçalho</label>
+                    <input type="text" id="inputAdminSchoolTitle" placeholder="Ex: Agendamento - Bento Benedini" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold">
+                  </div>
+                  <div>
+                    <label class="block font-bold text-slate-700 mb-1">Texto do Rodapé (Menu Lateral)</label>
+                    <input type="text" id="inputAdminFooterText" placeholder="Ex: Controle de Equipamentos" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold">
+                  </div>
+                </div>
+
+                <div class="pt-2 flex justify-end">
+                  <button id="btnSaveAdminBranding" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow">
+                    💾 Salvar Personalização, Imagens e Textos
+                  </button>
                 </div>
               </div>
             </div>
@@ -422,16 +445,25 @@
             </div>
           </div>
 
-          <!-- TABELA GERENCIAR RESERVAS DO ADMIN COM EDIÇÃO DIRETA -->
+          <!-- TABELA GERENCIAR RESERVAS DO ADMIN COM EXCLUSÃO EM MASSA E EDIÇÃO DIRETA -->
           <div id="panelAdminList" class="hidden space-y-3">
             <div class="flex justify-between items-center">
-              <h5 class="font-bold text-xs text-slate-700 uppercase">Todas as Reservas Cadastradas</h5>
+              <div class="flex items-center gap-3">
+                <h5 class="font-bold text-xs text-slate-700 uppercase">Todas as Reservas Cadastradas</h5>
+                <!-- BOTÃO DE EXCLUSÃO EM MASSA DE RESERVAS SELECIONADAS -->
+                <button id="btnAdminBatchDelete" onclick="adminBatchDeleteBookings()" class="hidden px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition shadow flex items-center gap-1.5">
+                  <i class="fa-solid fa-trash-can"></i> Excluir Selecionados (<span id="selectedAdminCount">0</span>)
+                </button>
+              </div>
               <span class="text-xs text-slate-500 font-semibold">Total: <span id="adminTotalBookingsCount">0</span></span>
             </div>
             <div class="border border-slate-200 rounded-xl overflow-hidden">
               <table class="w-full text-left text-xs">
                 <thead class="bg-slate-100 border-b border-slate-200 font-bold text-slate-600">
                   <tr>
+                    <th class="p-2 text-center w-8">
+                      <input type="checkbox" id="selectAllAdminBookings" onclick="toggleSelectAllAdminBookings(this)" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                    </th>
                     <th class="p-2">Equip.</th>
                     <th class="p-2">Data / Horário</th>
                     <th class="p-2">Professor(a)</th>
@@ -496,7 +528,12 @@
       totalStockChromebook: parseInt(localStorage.getItem('stock_chromebook')) || 50,
       totalStockTablet: parseInt(localStorage.getItem('stock_tablet')) || 30,
       adminPassword: localStorage.getItem('chromebook_admin_pass') || 'admin123',
-      branding: JSON.parse(localStorage.getItem('chromebook_branding')) || { logoUrl: '', faviconUrl: '' },
+      branding: JSON.parse(localStorage.getItem('chromebook_branding')) || { 
+        logoUrl: '', 
+        faviconUrl: '',
+        schoolTitle: 'Agendamento - Bento Benedini',
+        footerText: 'Controle de Equipamentos'
+      },
       isAdmin: false,
       allReservations: [],
       reservations: [],
@@ -512,7 +549,7 @@
     let dbRef = null;
     let settingsRef = null;
     let pendingCancelBookingId = null;
-    let editingAdminBookingId = null; // ID da reserva sendo editada na tabela do Admin
+    let editingAdminBookingId = null;
 
     document.addEventListener('DOMContentLoaded', () => {
       applyBranding(STATE.branding);
@@ -534,7 +571,6 @@
     function updateDeviceUI() {
       const isTablet = STATE.deviceType === 'tablet';
       
-      // Ícone do equipamento ao lado da caixa de seleção
       const deviceHeaderIcon = document.getElementById('headerDeviceIcon');
       if (deviceHeaderIcon) {
         deviceHeaderIcon.className = isTablet 
@@ -548,16 +584,13 @@
       const detailIcon = document.getElementById('detailModalIcon');
       if (detailIcon) detailIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button' : 'fa-solid fa-laptop';
 
-      // Atualiza títulos do Modal
       const modalIconClass = isTablet ? 'fa-tablet-screen-button' : 'fa-calendar-plus';
       const deviceLabel = isTablet ? 'Tablets' : 'Chromebooks';
       document.getElementById('modalBookingTitle').innerHTML = `<i class="fa-solid ${modalIconClass} text-blue-600"></i> Agendar ${deviceLabel}`;
       document.getElementById('displayTotalStock').innerText = getCurrentStock();
       document.getElementById('deviceTypeSelect').value = STATE.deviceType;
 
-      // Filtra os agendamentos apenas para o tipo atual
       STATE.reservations = STATE.allReservations.filter(r => (r.deviceType || 'chromebook') === STATE.deviceType);
-      
       renderCurrentView();
     }
 
@@ -578,6 +611,16 @@
       if (branding.faviconUrl && branding.faviconUrl.trim() !== '') {
         const favicon = document.getElementById('dynamicFavicon');
         if (favicon) favicon.href = branding.faviconUrl;
+      }
+
+      const subTitleEl = document.getElementById('headerSubTitle');
+      if (subTitleEl && branding.schoolTitle) {
+        subTitleEl.innerText = branding.schoolTitle;
+      }
+
+      const footerEl = document.getElementById('sidebarFooterText');
+      if (footerEl && branding.footerText) {
+        footerEl.innerText = branding.footerText;
       }
     }
 
@@ -696,8 +739,16 @@
       }
     }
 
+    function readFileAsDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
+    }
+
     function setupEventListeners() {
-      // Evento de Troca de Dispositivo (Combobox)
       document.getElementById('deviceTypeSelect').addEventListener('change', (e) => {
         STATE.deviceType = e.target.value;
         localStorage.setItem('chromebook_device_type', STATE.deviceType);
@@ -767,10 +818,28 @@
       document.getElementById('tabAdminList').addEventListener('click', () => switchAdminTab('list'));
       document.getElementById('tabAdminFirebase').addEventListener('click', () => switchAdminTab('firebase'));
 
-      document.getElementById('btnSaveAdminBranding').addEventListener('click', () => {
-        const logoUrl = document.getElementById('inputAdminLogoUrl').value.trim();
-        const faviconUrl = document.getElementById('inputAdminFaviconUrl').value.trim();
-        const branding = { logoUrl, faviconUrl };
+      // SALVAR BRANDING (IMAGENS UPLOAD + TEXTOS DO SITE)
+      document.getElementById('btnSaveAdminBranding').addEventListener('click', async () => {
+        let logoUrl = document.getElementById('inputAdminLogoUrl').value.trim();
+        let faviconUrl = document.getElementById('inputAdminFaviconUrl').value.trim();
+        
+        const logoFile = document.getElementById('inputAdminLogoFile').files[0];
+        const faviconFile = document.getElementById('inputAdminFaviconFile').files[0];
+
+        if (logoFile) {
+          logoUrl = await readFileAsDataURL(logoFile);
+          document.getElementById('inputAdminLogoUrl').value = logoUrl;
+        }
+
+        if (faviconFile) {
+          faviconUrl = await readFileAsDataURL(faviconFile);
+          document.getElementById('inputAdminFaviconUrl').value = faviconUrl;
+        }
+
+        const schoolTitle = document.getElementById('inputAdminSchoolTitle').value.trim() || 'Agendamento - Bento Benedini';
+        const footerText = document.getElementById('inputAdminFooterText').value.trim() || 'Controle de Equipamentos';
+
+        const branding = { logoUrl, faviconUrl, schoolTitle, footerText };
 
         STATE.branding = branding;
         localStorage.setItem('chromebook_branding', JSON.stringify(branding));
@@ -779,7 +848,7 @@
         if (STATE.dbConnected && settingsRef) {
           settingsRef.child('branding').set(branding);
         }
-        showToast("🎨 Logo e Favicon atualizados com sucesso!");
+        showToast("🎨 Personalização, Imagens e Textos salvos!");
       });
 
       // Salvar Estoque Chromebooks
@@ -954,6 +1023,8 @@
 
       document.getElementById('inputAdminLogoUrl').value = STATE.branding.logoUrl || '';
       document.getElementById('inputAdminFaviconUrl').value = STATE.branding.faviconUrl || '';
+      document.getElementById('inputAdminSchoolTitle').value = STATE.branding.schoolTitle || 'Agendamento - Bento Benedini';
+      document.getElementById('inputAdminFooterText').value = STATE.branding.footerText || 'Controle de Equipamentos';
 
       const fb = window.firebaseConfig || {};
       document.getElementById('fbApiKey').value = fb.apiKey || "";
@@ -982,7 +1053,7 @@
       if (tabName === 'list') renderAdminBookingsTable();
     }
 
-    // RENDERIZADOR DA TABELA ADMIN COM SUPORTE À EDIÇÃO DIRETA
+    // RENDERIZADOR DA TABELA ADMIN COM EXCLUSÃO EM MASSA E EDIÇÃO DIRETA
     function renderAdminBookingsTable() {
       const tbody = document.getElementById('adminBookingsTableBody');
       tbody.innerHTML = "";
@@ -991,7 +1062,7 @@
       const sorted = [...STATE.allReservations].sort((a,b) => a.date.localeCompare(b.date));
 
       if (sorted.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">Nenhuma reserva cadastrada.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">Nenhuma reserva cadastrada.</td></tr>`;
         return;
       }
 
@@ -1005,6 +1076,7 @@
 
         if (isEditing) {
           tr.innerHTML = `
+            <td class="p-1.5 text-center"></td>
             <td class="p-1.5 font-bold text-center text-sm">${deviceEmoji}</td>
             <td class="p-1.5 space-y-1">
               <input type="date" id="inlineDate_${r.id}" value="${r.date}" class="w-full px-1.5 py-1 border border-slate-300 rounded text-xs font-bold">
@@ -1031,6 +1103,9 @@
           `;
         } else {
           tr.innerHTML = `
+            <td class="p-2.5 text-center">
+              <input type="checkbox" value="${r.id}" onchange="updateAdminBatchDeleteBtn()" class="admin-booking-checkbox rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+            </td>
             <td class="p-2.5 font-bold text-center text-sm">${deviceEmoji}</td>
             <td class="p-2.5 font-bold text-slate-800">${r.date}<br><span class="text-slate-500 font-normal">${r.startTime}-${r.endTime}</span></td>
             <td class="p-2.5 font-bold text-blue-600">${r.professor}</td>
@@ -1044,6 +1119,59 @@
         }
         tbody.appendChild(tr);
       });
+
+      const master = document.getElementById('selectAllAdminBookings');
+      if (master) master.checked = false;
+      updateAdminBatchDeleteBtn();
+    }
+
+    // FUNÇÕES PARA SELEÇÃO E EXCLUSÃO EM MASSA
+    function toggleSelectAllAdminBookings(master) {
+      const checkboxes = document.querySelectorAll('.admin-booking-checkbox');
+      checkboxes.forEach(cb => cb.checked = master.checked);
+      updateAdminBatchDeleteBtn();
+    }
+
+    function updateAdminBatchDeleteBtn() {
+      const selected = document.querySelectorAll('.admin-booking-checkbox:checked');
+      const btn = document.getElementById('btnAdminBatchDelete');
+      const countSpan = document.getElementById('selectedAdminCount');
+      const master = document.getElementById('selectAllAdminBookings');
+
+      const total = document.querySelectorAll('.admin-booking-checkbox').length;
+      if (master) {
+        master.checked = (selected.length > 0 && selected.length === total);
+      }
+
+      if (selected.length > 0) {
+        btn.classList.remove('hidden');
+        countSpan.innerText = selected.length;
+      } else {
+        btn.classList.add('hidden');
+      }
+    }
+
+    function adminBatchDeleteBookings() {
+      const selected = document.querySelectorAll('.admin-booking-checkbox:checked');
+      const ids = Array.from(selected).map(cb => cb.value);
+
+      if (ids.length === 0) return;
+
+      if (confirm(`⚠️ Tem certeza que deseja excluir os ${ids.length} agendamentos selecionados de uma só vez?`)) {
+        if (STATE.dbConnected && dbRef) {
+          ids.forEach(id => dbRef.child(id).remove());
+          showToast(`✅ ${ids.length} agendamentos excluídos na nuvem!`);
+        } else {
+          STATE.allReservations = STATE.allReservations.filter(r => !ids.includes(r.id));
+          localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
+          showToast(`✅ ${ids.length} agendamentos excluídos localmente!`, false);
+          updateDeviceUI();
+        }
+        const master = document.getElementById('selectAllAdminBookings');
+        if (master) master.checked = false;
+        updateAdminBatchDeleteBtn();
+        renderAdminBookingsTable();
+      }
     }
 
     function adminEditBooking(id) {
@@ -1713,7 +1841,7 @@
       `;
 
       if (filtered.length === 0) {
-        html += `<tr><td colspan="5" class="text-center py-6 text-slate-400">Nenum agendamento para esta data.</td></tr>`;
+        html += `<tr><td colspan="5" class="text-center py-6 text-slate-400">Nenhum agendamento para esta data.</td></tr>`;
       } else {
         filtered.forEach(r => {
           html += `
