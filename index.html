@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Agendamento de Chromebooks - Bento Benedini</title>
+  <title>Agendamento de Chromebook</title>
   <link id="dynamicFavicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💻</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -45,7 +45,7 @@
         </div>
         <div>
           <h1 id="headerSchoolTitle" class="text-base md:text-xl font-bold text-slate-800 leading-tight">Chromebooks</h1>
-          <p class="text-[10px] md:text-xs text-slate-500 font-medium hidden sm:block">Agendamento Escolar</p>
+          <p class="text-[10px] md:text-xs text-slate-500 font-medium hidden sm:block">Agendamento - Bento Benedini</p>
         </div>
       </div>
 
@@ -140,7 +140,7 @@
       </div>
 
       <div class="text-[11px] text-slate-400 text-center pt-4 border-t border-slate-100">
-        Escola • Controle de Chromebooks
+        Controle de Chromebook
       </div>
     </aside>
 
@@ -759,7 +759,7 @@
         }
       });
 
-      // MODAL CANCELAMENTO - EVENTOS DOS BOTÕES
+      // MODAL CANCELAMENTO
       document.getElementById('btnCancelSingleOnly').addEventListener('click', () => {
         if (pendingCancelBookingId) {
           deleteBookingData(pendingCancelBookingId, 'single');
@@ -1346,6 +1346,24 @@
         `;
       }
 
+      // LINHA DE HORÁRIO ATUAL
+      const todayIso = formatDateIso(new Date());
+      if (dateStr === todayIso) {
+        const now = new Date();
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const startMinutes = START_HOUR * 60;
+        const endMinutes = END_HOUR * 60;
+
+        if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+          const topPx = ((nowMinutes - startMinutes) / 60) * 60;
+          html += `
+            <div class="absolute left-0 right-0 border-b-2 border-rose-500/70 z-20 pointer-events-none flex items-center" style="top: ${topPx}px;">
+              <div class="w-2.5 h-2.5 rounded-full bg-rose-500 -ml-1 shadow-sm"></div>
+            </div>
+          `;
+        }
+      }
+
       const eventsWithPos = computeOverlappingLayout(filtered);
 
       eventsWithPos.forEach(item => {
@@ -1401,10 +1419,9 @@
       return results.map(r => ({ ...r, totalColumns: totalCols }));
     }
 
-    // NAVEGAÇÃO DA SEMANA CORRIGIDA SEM ERROS NA VIRADA DE MÊS
     function renderWeekGrid(container) {
       const base = new Date(STATE.currentDate.getFullYear(), STATE.currentDate.getMonth(), STATE.currentDate.getDate());
-      const dayOfWeek = base.getDay(); // 0 = Dom, 1 = Seg, ..., 6 = Sáb
+      const dayOfWeek = base.getDay();
       const distanceToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
       
       const monday = new Date(base);
