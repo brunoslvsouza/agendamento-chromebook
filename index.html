@@ -36,15 +36,21 @@
   <!-- TOP BAR / HEADER -->
   <header class="bg-white border-b border-slate-200 px-3 py-2.5 md:px-6 md:py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0 shadow-sm z-20">
     
-    <!-- Logo e Título -->
+    <!-- Logo e Seletor de Equipamento -->
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-2.5">
-        <div id="logoContainer" class="bg-blue-600 text-white p-2 rounded-xl shadow-md flex items-center justify-center overflow-hidden w-10 h-10">
+        <div id="logoContainer" class="bg-blue-600 text-white p-2 rounded-xl shadow-md flex items-center justify-center overflow-hidden w-10 h-10 shrink-0">
           <i id="headerLogoIcon" class="fa-solid fa-laptop text-lg md:text-xl"></i>
           <img id="headerLogoImg" src="" alt="Logo Escola" class="w-full h-full object-cover hidden">
         </div>
         <div>
-          <h1 id="headerSchoolTitle" class="text-base md:text-xl font-bold text-slate-800 leading-tight">Chromebooks</h1>
+          <!-- COMBOBOX DE SELEÇÃO DE EQUIPAMENTO -->
+          <div class="flex items-center gap-1.5">
+            <select id="deviceTypeSelect" class="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 font-extrabold text-sm md:text-base rounded-lg px-2 py-0.5 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
+              <option value="chromebook">💻 Chromebooks</option>
+              <option value="tablet">📱 Tablets</option>
+            </select>
+          </div>
           <p class="text-[10px] md:text-xs text-slate-500 font-medium hidden sm:block">Agendamento - Bento Benedini</p>
         </div>
       </div>
@@ -82,7 +88,7 @@
       </div>
 
       <div class="px-2.5 py-1.5 text-slate-600 bg-slate-100 rounded-xl font-semibold text-xs flex items-center gap-1.5 shrink-0">
-        <i class="fa-solid fa-laptop text-blue-600"></i> Total: <span id="displayTotalStock" class="font-bold">50</span>
+        <i id="badgeStockIcon" class="fa-solid fa-laptop text-blue-600"></i> Total: <span id="displayTotalStock" class="font-bold">50</span>
       </div>
 
       <button id="btnOpenAdmin" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs shadow transition flex items-center gap-1.5 shrink-0">
@@ -140,7 +146,7 @@
       </div>
 
       <div class="text-[11px] text-slate-400 text-center pt-4 border-t border-slate-100">
-        Controle de Chromebook
+        Controle de Equipamentos
       </div>
     </aside>
 
@@ -156,7 +162,7 @@
     <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 max-h-[92vh] sm:max-h-[90vh] flex flex-col">
       <div class="bg-slate-50 px-4 sm:px-6 py-3.5 border-b border-slate-200 flex justify-between items-center shrink-0">
         <h3 id="modalBookingTitle" class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
-          <i class="fa-solid fa-calendar-plus text-blue-600"></i> Agendar Chromebooks
+          <i class="fa-solid fa-calendar-plus text-blue-600"></i> Agendar Equipamentos
         </h3>
         <button id="btnCloseModal" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-base"></i></button>
       </div>
@@ -257,7 +263,7 @@
     <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
       <div class="bg-blue-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
         <h3 class="text-sm sm:text-base font-bold flex items-center gap-2">
-          <i class="fa-solid fa-laptop"></i> Detalhes da Reserva
+          <i id="detailModalIcon" class="fa-solid fa-laptop"></i> Detalhes da Reserva
         </h3>
         <button id="btnCloseDetails" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
@@ -380,12 +386,27 @@
               </div>
             </div>
 
+            <!-- ESTOQUE DE EQUIPAMENTOS (CHROMEBOOKS & TABLETS) -->
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-              <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Estoque Total de Chromebooks</h5>
-              <p class="text-xs text-slate-500">Ajuste a quantidade máxima de aparelhos disponíveis na escola.</p>
-              <div class="flex items-center gap-3">
-                <input type="number" id="inputAdminTotalStock" min="1" max="200" class="w-32 px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-center">
-                <button id="btnSaveAdminStock" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar Estoque</button>
+              <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Estoque Total de Equipamentos</h5>
+              <p class="text-xs text-slate-500">Ajuste a quantidade máxima de aparelhos disponíveis para cada unidade.</p>
+              
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">💻 Chromebooks</label>
+                  <div class="flex gap-2">
+                    <input type="number" id="inputAdminStockChromebook" min="1" max="300" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-center">
+                    <button id="btnSaveStockChromebook" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar</button>
+                  </div>
+                </div>
+
+                <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">📱 Tablets</label>
+                  <div class="flex gap-2">
+                    <input type="number" id="inputAdminStockTablet" min="1" max="300" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-center">
+                    <button id="btnSaveStockTablet" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar</button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -408,11 +429,12 @@
               <table class="w-full text-left text-xs">
                 <thead class="bg-slate-100 border-b border-slate-200 font-bold text-slate-600">
                   <tr>
+                    <th class="p-2.5">Equip.</th>
                     <th class="p-2.5">Data / Hora</th>
                     <th class="p-2.5">Professor</th>
                     <th class="p-2.5">Turma/Sala</th>
                     <th class="p-2.5 text-center">Qtd</th>
-                    <th class="p-2.5 text-right">Ações Rápidas</th>
+                    <th class="p-2.5 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody id="adminBookingsTableBody" class="divide-y divide-slate-100">
@@ -467,10 +489,13 @@
   <!-- SCRIPT DE FUNCIONAMENTO -->
   <script>
     const STATE = {
-      totalStock: parseInt(localStorage.getItem('chromebook_stock')) || 50,
+      deviceType: localStorage.getItem('chromebook_device_type') || 'chromebook',
+      totalStockChromebook: parseInt(localStorage.getItem('stock_chromebook')) || 50,
+      totalStockTablet: parseInt(localStorage.getItem('stock_tablet')) || 30,
       adminPassword: localStorage.getItem('chromebook_admin_pass') || 'admin123',
       branding: JSON.parse(localStorage.getItem('chromebook_branding')) || { logoUrl: '', faviconUrl: '' },
       isAdmin: false,
+      allReservations: [],
       reservations: [],
       currentDate: new Date(),
       currentView: 'day',
@@ -493,10 +518,40 @@
       updateHeaderDateDisplay();
       
       if (!STATE.dbConnected) {
-        STATE.reservations = JSON.parse(localStorage.getItem('chromebook_reservations')) || [];
-        renderCurrentView();
+        STATE.allReservations = JSON.parse(localStorage.getItem('chromebook_reservations')) || [];
+        updateDeviceUI();
       }
     });
+
+    function getCurrentStock() {
+      return STATE.deviceType === 'tablet' ? STATE.totalStockTablet : STATE.totalStockChromebook;
+    }
+
+    function updateDeviceUI() {
+      const isTablet = STATE.deviceType === 'tablet';
+      
+      // Ícones do Cabeçalho e Badges
+      const logoIcon = document.getElementById('headerLogoIcon');
+      if (logoIcon) logoIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button text-lg md:text-xl' : 'fa-solid fa-laptop text-lg md:text-xl';
+      
+      const badgeIcon = document.getElementById('badgeStockIcon');
+      if (badgeIcon) badgeIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button text-blue-600' : 'fa-solid fa-laptop text-blue-600';
+
+      const detailIcon = document.getElementById('detailModalIcon');
+      if (detailIcon) detailIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button' : 'fa-solid fa-laptop';
+
+      // Atualiza títulos do Modal
+      const modalIconClass = isTablet ? 'fa-tablet-screen-button' : 'fa-calendar-plus';
+      const deviceLabel = isTablet ? 'Tablets' : 'Chromebooks';
+      document.getElementById('modalBookingTitle').innerHTML = `<i class="fa-solid ${modalIconClass} text-blue-600"></i> Agendar ${deviceLabel}`;
+      document.getElementById('displayTotalStock').innerText = getCurrentStock();
+      document.getElementById('deviceTypeSelect').value = STATE.deviceType;
+
+      // Filtra os agendamentos apenas para o tipo atual
+      STATE.reservations = STATE.allReservations.filter(r => (r.deviceType || 'chromebook') === STATE.deviceType);
+      
+      renderCurrentView();
+    }
 
     function applyBranding(branding) {
       if (!branding) return;
@@ -559,16 +614,16 @@
           dbRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
-              STATE.reservations = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+              STATE.allReservations = Object.keys(data).map(key => ({ id: key, ...data[key] }));
             } else {
-              STATE.reservations = [];
+              STATE.allReservations = [];
             }
             if (!STATE.dbConnected) {
               STATE.dbConnected = true;
               showToast("🟢 Nuvem Conectada! Sincronização em tempo real ativa.");
             }
             updateStatusBadge(true);
-            renderCurrentView();
+            updateDeviceUI();
             if (STATE.isAdmin) renderAdminBookingsTable();
           });
 
@@ -580,11 +635,17 @@
                 localStorage.setItem('chromebook_branding', JSON.stringify(settings.branding));
                 applyBranding(settings.branding);
               }
-              if (settings.totalStock) {
-                STATE.totalStock = settings.totalStock;
-                localStorage.setItem('chromebook_stock', settings.totalStock);
-                document.getElementById('displayTotalStock').innerText = settings.totalStock;
+              if (settings.totalStockChromebook !== undefined) {
+                STATE.totalStockChromebook = settings.totalStockChromebook;
+                localStorage.setItem('stock_chromebook', settings.totalStockChromebook);
+              } else if (settings.totalStock !== undefined) {
+                STATE.totalStockChromebook = settings.totalStock;
               }
+              if (settings.totalStockTablet !== undefined) {
+                STATE.totalStockTablet = settings.totalStockTablet;
+                localStorage.setItem('stock_tablet', settings.totalStockTablet);
+              }
+              document.getElementById('displayTotalStock').innerText = getCurrentStock();
             }
           });
 
@@ -628,6 +689,14 @@
     }
 
     function setupEventListeners() {
+      // Evento de Troca de Dispositivo (Combobox)
+      document.getElementById('deviceTypeSelect').addEventListener('change', (e) => {
+        STATE.deviceType = e.target.value;
+        localStorage.setItem('chromebook_device_type', STATE.deviceType);
+        updateDeviceUI();
+        showToast(`Exibindo agendamentos de: ${STATE.deviceType === 'tablet' ? '📱 Tablets' : '💻 Chromebooks'}`);
+      });
+
       const sidebar = document.getElementById('sidebar');
       const overlay = document.getElementById('sidebarOverlay');
       const toggleSidebar = () => {
@@ -705,17 +774,28 @@
         showToast("🎨 Logo e Favicon atualizados com sucesso!");
       });
 
-      document.getElementById('btnSaveAdminStock').addEventListener('click', () => {
-        const val = parseInt(document.getElementById('inputAdminTotalStock').value);
+      // Salvar Estoque Chromebooks
+      document.getElementById('btnSaveStockChromebook').addEventListener('click', () => {
+        const val = parseInt(document.getElementById('inputAdminStockChromebook').value);
         if (val && val > 0) {
-          STATE.totalStock = val;
-          localStorage.setItem('chromebook_stock', val);
-          document.getElementById('displayTotalStock').innerText = val;
+          STATE.totalStockChromebook = val;
+          localStorage.setItem('stock_chromebook', val);
+          if (STATE.dbConnected && settingsRef) settingsRef.child('totalStockChromebook').set(val);
+          document.getElementById('displayTotalStock').innerText = getCurrentStock();
+          showToast("✅ Estoque de Chromebooks atualizado para " + val + " unidades!");
+          renderCurrentView();
+        }
+      });
 
-          if (STATE.dbConnected && settingsRef) {
-            settingsRef.child('totalStock').set(val);
-          }
-          showToast("✅ Estoque atualizado para " + val + " unidades!");
+      // Salvar Estoque Tablets
+      document.getElementById('btnSaveStockTablet').addEventListener('click', () => {
+        const val = parseInt(document.getElementById('inputAdminStockTablet').value);
+        if (val && val > 0) {
+          STATE.totalStockTablet = val;
+          localStorage.setItem('stock_tablet', val);
+          if (STATE.dbConnected && settingsRef) settingsRef.child('totalStockTablet').set(val);
+          document.getElementById('displayTotalStock').innerText = getCurrentStock();
+          showToast("✅ Estoque de Tablets atualizado para " + val + " unidades!");
           renderCurrentView();
         }
       });
@@ -858,7 +938,9 @@
     function showAdminContent() {
       document.getElementById('adminAuthBox').classList.add('hidden');
       document.getElementById('adminContentBox').classList.remove('hidden');
-      document.getElementById('inputAdminTotalStock').value = STATE.totalStock;
+
+      document.getElementById('inputAdminStockChromebook').value = STATE.totalStockChromebook;
+      document.getElementById('inputAdminStockTablet').value = STATE.totalStockTablet;
 
       document.getElementById('inputAdminLogoUrl').value = STATE.branding.logoUrl || '';
       document.getElementById('inputAdminFaviconUrl').value = STATE.branding.faviconUrl || '';
@@ -893,23 +975,26 @@
     function renderAdminBookingsTable() {
       const tbody = document.getElementById('adminBookingsTableBody');
       tbody.innerHTML = "";
-      document.getElementById('adminTotalBookingsCount').innerText = STATE.reservations.length;
+      document.getElementById('adminTotalBookingsCount').innerText = STATE.allReservations.length;
 
-      const sorted = [...STATE.reservations].sort((a,b) => a.date.localeCompare(b.date));
+      const sorted = [...STATE.allReservations].sort((a,b) => a.date.localeCompare(b.date));
 
       if (sorted.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">Nenhuma reserva cadastrada.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">Nenhuma reserva cadastrada.</td></tr>`;
         return;
       }
 
       sorted.forEach(r => {
+        const deviceType = r.deviceType || 'chromebook';
+        const deviceEmoji = deviceType === 'tablet' ? '📱' : '💻';
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50 transition";
         tr.innerHTML = `
+          <td class="p-2.5 font-bold text-center text-sm">${deviceEmoji}</td>
           <td class="p-2.5 font-bold text-slate-800">${r.date}<br><span class="text-slate-500 font-normal">${r.startTime}-${r.endTime}</span></td>
           <td class="p-2.5 font-bold text-blue-600">${r.professor}</td>
           <td class="p-2.5 text-slate-600">${r.sala} (${r.turma})</td>
-          <td class="p-2.5 text-center font-black">💻 ${r.quantity}</td>
+          <td class="p-2.5 text-center font-black">${r.quantity}</td>
           <td class="p-2.5 text-right space-x-1">
             <button onclick="adminEditBooking('${r.id}')" class="px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold rounded">Editar</button>
             <button onclick="adminDeleteBooking('${r.id}')" class="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded">Excluir</button>
@@ -920,7 +1005,7 @@
     }
 
     function adminEditBooking(id) {
-      const booking = STATE.reservations.find(r => r.id === id);
+      const booking = STATE.allReservations.find(r => r.id === id);
       if (booking) {
         closeAdminModal();
         openBookingModal(null, null, booking);
@@ -942,7 +1027,7 @@
       const options = { weekday: 'short', day: 'numeric', month: 'short' };
       document.getElementById('currentDateDisplay').innerText = STATE.currentDate.toLocaleDateString('pt-BR', options);
       document.getElementById('miniDatePicker').value = formatDateIso(STATE.currentDate);
-      document.getElementById('displayTotalStock').innerText = STATE.totalStock;
+      document.getElementById('displayTotalStock').innerText = getCurrentStock();
       updateViewButtonsUI();
     }
 
@@ -1003,14 +1088,15 @@
         return;
       }
 
-      const available = STATE.totalStock - maxUsed;
+      const currentStock = getCurrentStock();
+      const available = currentStock - maxUsed;
 
       if (qty > available) {
         badge.innerText = `⚠️ Indisponível! Restam ${available}`;
         badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
         submitBtn.disabled = true;
       } else {
-        badge.innerText = `🟢 Livre: ${available} de ${STATE.totalStock}`;
+        badge.innerText = `🟢 Livre: ${available} de ${currentStock}`;
         badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700";
         submitBtn.disabled = false;
       }
@@ -1019,9 +1105,10 @@
     function openBookingModal(defaultStart = null, defaultDate = null, bookingToEdit = null) {
       document.getElementById('formBooking').reset();
       const recurrenceBox = document.getElementById('recurrenceBox');
+      const deviceLabel = STATE.deviceType === 'tablet' ? 'Tablets' : 'Chromebooks';
       
       if (bookingToEdit) {
-        document.getElementById('modalBookingTitle').innerText = "Editar Agendamento";
+        document.getElementById('modalBookingTitle').innerText = `Editar Agendamento (${deviceLabel})`;
         document.getElementById('inputEditId').value = bookingToEdit.id;
         document.getElementById('inputProf').value = bookingToEdit.professor;
         document.getElementById('inputSala').value = bookingToEdit.sala;
@@ -1038,7 +1125,7 @@
         document.getElementById('recurrencePeriodBox').classList.add('hidden');
         document.getElementById('recurrenceHelpText').classList.add('hidden');
 
-        document.getElementById('modalBookingTitle').innerText = "Novo Agendamento";
+        document.getElementById('modalBookingTitle').innerText = `Novo Agendamento - ${deviceLabel}`;
         document.getElementById('inputEditId').value = "";
         
         const targetDate = defaultDate || formatDateIso(STATE.currentDate);
@@ -1128,11 +1215,14 @@
         targetDates = generateRecurrenceDates(baseDate, recurrenceType, recurrencePeriod);
       }
 
+      const currentStock = getCurrentStock();
+
       for (let dateStr of targetDates) {
         const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startTime, endTime, editId);
-        if (!isValidTime || (STATE.totalStock - maxUsed) < quantity) {
+        if (!isValidTime || (currentStock - maxUsed) < quantity) {
           const dateFormatted = new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
-          alert(`⚠️ Não há Chromebooks suficientes na data ${dateFormatted}! O agendamento foi cancelado para evitar superlotamento.`);
+          const deviceLabel = STATE.deviceType === 'tablet' ? 'Tablets' : 'Chromebooks';
+          alert(`⚠️ Não há ${deviceLabel} suficientes na data ${dateFormatted}! O agendamento foi cancelado.`);
           return;
         }
       }
@@ -1144,24 +1234,27 @@
       const groupId = targetDates.length > 1 ? 'group-' + Date.now() : null;
 
       targetDates.forEach(dateStr => {
-        const bookingData = { professor, sala, turma, date: dateStr, startTime, endTime, quantity, pin, groupId };
+        const bookingData = { 
+          professor, sala, turma, date: dateStr, startTime, endTime, quantity, pin, groupId,
+          deviceType: STATE.deviceType
+        };
 
         if (STATE.dbConnected && dbRef) {
           if (editId) dbRef.child(editId).update(bookingData);
           else dbRef.push(bookingData);
         } else {
           if (editId) {
-            const idx = STATE.reservations.findIndex(r => r.id === editId);
-            if (idx !== -1) STATE.reservations[idx] = { id: editId, ...bookingData };
+            const idx = STATE.allReservations.findIndex(r => r.id === editId);
+            if (idx !== -1) STATE.allReservations[idx] = { id: editId, ...bookingData };
           } else {
-            STATE.reservations.push({ id: 'res-' + Date.now() + Math.random().toString(36).substr(2,4), ...bookingData });
+            STATE.allReservations.push({ id: 'res-' + Date.now() + Math.random().toString(36).substr(2,4), ...bookingData });
           }
         }
       });
 
       if (!STATE.dbConnected) {
-        localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.reservations));
-        renderCurrentView();
+        localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
+        updateDeviceUI();
       }
 
       showToast(targetDates.length > 1 ? `✅ ${targetDates.length} agendamentos recorrentes criados!` : "Agendamento salvo!");
@@ -1169,7 +1262,7 @@
     }
 
     function openDetailsModal(bookingId) {
-      const booking = STATE.reservations.find(r => r.id === bookingId);
+      const booking = STATE.allReservations.find(r => r.id === bookingId);
       if (!booking) return;
 
       STATE.selectedBookingId = bookingId;
@@ -1177,7 +1270,9 @@
       document.getElementById('detailTime').innerText = `${booking.startTime} às ${booking.endTime}`;
       document.getElementById('detailDate').innerText = new Date(booking.date + 'T00:00:00').toLocaleDateString('pt-BR');
       document.getElementById('detailLocation').innerText = `${booking.sala} (${booking.turma})`;
-      document.getElementById('detailQty').innerText = `💻 ${booking.quantity} aparelhos`;
+      
+      const emoji = (booking.deviceType || 'chromebook') === 'tablet' ? '📱' : '💻';
+      document.getElementById('detailQty').innerText = `${emoji} ${booking.quantity} aparelhos`;
 
       document.getElementById('modalDetails').classList.remove('hidden');
     }
@@ -1188,7 +1283,7 @@
     }
 
     function handleEditFromDetails() {
-      const booking = STATE.reservations.find(r => r.id === STATE.selectedBookingId);
+      const booking = STATE.allReservations.find(r => r.id === STATE.selectedBookingId);
       if (!booking) return;
 
       if (STATE.isAdmin) {
@@ -1209,7 +1304,7 @@
     }
 
     function handleDeleteFromDetails() {
-      const booking = STATE.reservations.find(r => r.id === STATE.selectedBookingId);
+      const booking = STATE.allReservations.find(r => r.id === STATE.selectedBookingId);
       if (!booking) return;
 
       if (STATE.isAdmin) {
@@ -1228,7 +1323,7 @@
     }
 
     function openCancelModal(bookingId) {
-      const booking = STATE.reservations.find(r => r.id === bookingId);
+      const booking = STATE.allReservations.find(r => r.id === bookingId);
       if (!booking) return;
 
       pendingCancelBookingId = bookingId;
@@ -1252,13 +1347,13 @@
     }
 
     function deleteBookingData(id, scope = 'single') {
-      const targetBooking = STATE.reservations.find(r => r.id === id);
+      const targetBooking = STATE.allReservations.find(r => r.id === id);
       if (!targetBooking) return;
 
       let toDeleteIds = [id];
 
       if (scope === 'future' && targetBooking.groupId) {
-        toDeleteIds = STATE.reservations
+        toDeleteIds = STATE.allReservations
           .filter(r => r.groupId === targetBooking.groupId && r.date >= targetBooking.date)
           .map(r => r.id);
       }
@@ -1269,10 +1364,10 @@
         });
         showToast(`✅ ${toDeleteIds.length} reserva(s) cancelada(s) na nuvem!`);
       } else {
-        STATE.reservations = STATE.reservations.filter(r => !toDeleteIds.includes(r.id));
-        localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.reservations));
+        STATE.allReservations = STATE.allReservations.filter(r => !toDeleteIds.includes(r.id));
+        localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
         showToast(`✅ ${toDeleteIds.length} reserva(s) removida(s) localmente!`, false);
-        renderCurrentView();
+        updateDeviceUI();
       }
     }
 
@@ -1289,8 +1384,9 @@
         if (current > peak) peak = current;
       }
 
-      document.getElementById('statPeakUsed').innerText = `${peak}/${STATE.totalStock}`;
-      const pct = Math.min(100, Math.round((peak / STATE.totalStock) * 100));
+      const currentStock = getCurrentStock();
+      document.getElementById('statPeakUsed').innerText = `${peak}/${currentStock}`;
+      const pct = Math.min(100, Math.round((peak / currentStock) * 100));
       const pBar = document.getElementById('statProgressBar');
       pBar.style.width = `${pct}%`;
       pBar.className = pct >= 100 ? "bg-rose-500 h-2 rounded-full transition-all" : (pct > 50 ? "bg-amber-500 h-2 rounded-full transition-all" : "bg-blue-600 h-2 rounded-full transition-all");
@@ -1365,6 +1461,7 @@
       }
 
       const eventsWithPos = computeOverlappingLayout(filtered);
+      const emoji = STATE.deviceType === 'tablet' ? '📱' : '💻';
 
       eventsWithPos.forEach(item => {
         const r = item.event;
@@ -1380,7 +1477,7 @@
                style="top: ${topPx}px; height: ${heightPx}px; left: ${leftPct}%; width: ${widthPct - 1}%;">
             <div class="flex justify-between items-center gap-1">
               <span class="font-bold text-[10px] md:text-xs truncate">${r.professor}</span>
-              <span class="bg-white text-slate-900 font-black text-[9px] md:text-[10px] px-1 rounded shrink-0">💻 ${r.quantity}</span>
+              <span class="bg-white text-slate-900 font-black text-[9px] md:text-[10px] px-1 rounded shrink-0">${emoji} ${r.quantity}</span>
             </div>
             <p class="text-[9px] md:text-[10px] text-white/90 truncate">${r.startTime}-${r.endTime} • ${r.sala}</p>
           </div>
@@ -1455,6 +1552,8 @@
             <div class="flex-1 grid grid-cols-5 divide-x divide-slate-200 overflow-y-auto p-2 gap-2 bg-slate-100/50">
       `;
 
+      const emoji = STATE.deviceType === 'tablet' ? '📱' : '💻';
+
       weekDates.forEach(d => {
         const dateStr = formatDateIso(d);
         let dayBookings = STATE.reservations.filter(r => r.date === dateStr);
@@ -1473,7 +1572,7 @@
             <div onclick="openDetailsModal('${r.id}')" class="bg-white border border-slate-200 rounded-xl p-2 shadow-sm hover:shadow transition cursor-pointer space-y-1">
               <div class="flex justify-between items-center text-[10px] font-bold text-slate-500">
                 <span>${r.startTime}-${r.endTime}</span>
-                <span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-black">💻 ${r.quantity}</span>
+                <span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-black">${emoji} ${r.quantity}</span>
               </div>
               <h5 class="font-bold text-xs text-slate-800 truncate">${r.professor}</h5>
               <p class="text-[10px] text-slate-500 truncate">${r.sala} • ${r.turma}</p>
@@ -1504,6 +1603,7 @@
       }
 
       filtered.sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+      const emoji = STATE.deviceType === 'tablet' ? '📱' : '💻';
 
       let html = `
         <div class="p-3 sm:p-6 max-w-4xl mx-auto w-full space-y-3">
@@ -1539,7 +1639,7 @@
               <td class="py-2.5 px-3 font-bold text-blue-600">${r.professor}</td>
               <td class="py-2.5 px-3 text-slate-600">${r.sala} (${r.turma})</td>
               <td class="py-2.5 px-3 text-center font-black">
-                <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[11px]">💻 ${r.quantity}</span>
+                <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[11px]">${emoji} ${r.quantity}</span>
               </td>
               <td class="py-2.5 px-3 text-right">
                 <button onclick="openDetailsModal('${r.id}')" class="text-blue-600 hover:text-blue-800 font-bold px-2 py-1 rounded hover:bg-blue-50 transition">
