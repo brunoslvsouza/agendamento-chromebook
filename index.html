@@ -12,6 +12,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
+  <!-- ARQUIVO DE CONEXÃO SEPARADO DO FIREBASE -->
+  <script src="firebase-config.js"></script>
+
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .hour-row { height: 60px; }
@@ -329,7 +332,6 @@
         <div class="p-6 overflow-y-auto space-y-6 flex-1">
           
           <div id="panelAdminConfig" class="space-y-5">
-            <!-- PERSONALIZAÇÃO DA MARCA DA ESCOLA -->
             <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-200 space-y-3">
               <h5 class="font-bold text-xs text-blue-900 uppercase tracking-wider">🎨 Personalização da Escola (Logo e Favicon)</h5>
               <p class="text-xs text-slate-500">Cole os links das imagens da logo da escola e do ícone que fica na aba do navegador.</p>
@@ -435,20 +437,6 @@
 
   <!-- SCRIPT DE FUNCIONAMENTO -->
   <script>
-    // =========================================================================
-    // ⬇️ COLE SUAS CHAVES DO FIREBASE ABAIXO (ENTRE AS ASPAS) ⬇️
-    // =========================================================================
-    const firebaseConfig = {
-      apiKey: "AIzaSyD0YKiDNXvacxMBGXGVvd2QJd-LJQuv2YI",
-      authDomain: "agendamento-chromebook-d98f2.firebaseapp.com",
-      databaseURL: "https://agendamento-chromebook-d98f2-default-rtdb.firebaseio.com",
-      projectId: "agendamento-chromebook-d98f2",
-      storageBucket: "",
-      messagingSenderId: "",
-      appId: ""
-    };
-    // =========================================================================
-
     const STATE = {
       totalStock: parseInt(localStorage.getItem('chromebook_stock')) || 50,
       adminPassword: localStorage.getItem('chromebook_admin_pass') || 'admin123',
@@ -519,7 +507,8 @@
     }
 
     function initFirebase() {
-      let config = firebaseConfig;
+      // Lê do arquivo separado firebase-config.js ou do LocalStorage
+      let config = window.firebaseConfig || {};
       const savedConfig = localStorage.getItem('chromebook_fb_config');
       if (savedConfig) {
         try {
@@ -538,7 +527,6 @@
           dbRef = firebase.database().ref('reservations');
           settingsRef = firebase.database().ref('settings');
 
-          // Ouve mudanças nos Agendamentos
           dbRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -555,7 +543,6 @@
             if (STATE.isAdmin) renderAdminBookingsTable();
           });
 
-          // Ouve mudanças de Marca e Estoque na nuvem
           settingsRef.on('value', (snapshot) => {
             const settings = snapshot.val();
             if (settings) {
@@ -593,7 +580,7 @@
       } else {
         badge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 cursor-pointer hover:scale-105 transition";
         text.innerHTML = `<i class="fa-solid fa-database text-amber-600"></i> 🟠 Modo Local (Sem Nuvem)`;
-        if (adminStatus) adminStatus.innerText = "⚠️ O sistema está no Modo Local. Cole as chaves abaixo para ativar a sincronização entre aparelhos.";
+        if (adminStatus) adminStatus.innerText = "⚠️ O sistema está no Modo Local. Crie o arquivo firebase-config.js com suas chaves para ativar a nuvem.";
       }
     }
 
@@ -674,7 +661,6 @@
       document.getElementById('tabAdminList').addEventListener('click', () => switchAdminTab('list'));
       document.getElementById('tabAdminFirebase').addEventListener('click', () => switchAdminTab('firebase'));
 
-      // Salvar Logo e Favicon
       document.getElementById('btnSaveAdminBranding').addEventListener('click', () => {
         const logoUrl = document.getElementById('inputAdminLogoUrl').value.trim();
         const faviconUrl = document.getElementById('inputAdminFaviconUrl').value.trim();
@@ -730,7 +716,6 @@
         setTimeout(() => window.location.reload(), 1000);
       });
 
-      // Recorrência UI Toggle
       document.getElementById('inputRecurrenceType').addEventListener('change', (e) => {
         const val = e.target.value;
         const periodBox = document.getElementById('recurrencePeriodBox');
@@ -826,12 +811,7 @@
       document.getElementById('inputAdminLogoUrl').value = STATE.branding.logoUrl || '';
       document.getElementById('inputAdminFaviconUrl').value = STATE.branding.faviconUrl || '';
 
-      const saved = localStorage.getItem('chromebook_fb_config');
-      let fb = firebaseConfig;
-      if (saved) {
-        try { fb = JSON.parse(saved); } catch(e){}
-      }
-
+      const fb = window.firebaseConfig || {};
       document.getElementById('fbApiKey').value = fb.apiKey || "";
       document.getElementById('fbAuthDomain').value = fb.authDomain || "";
       document.getElementById('fbDatabaseURL').value = fb.databaseURL || "";
@@ -1002,7 +982,7 @@
         document.getElementById('inputEndTime').value = bookingToEdit.endTime;
         document.getElementById('inputQty').value = bookingToEdit.quantity;
         document.getElementById('inputPin').value = bookingToEdit.pin || "";
-        recurrenceBox.classList.add('hidden'); // Oculta na edição simples
+        recurrenceBox.classList.add('hidden');
       } else {
         recurrenceBox.classList.remove('hidden');
         document.getElementById('inputRecurrenceType').value = 'none';
@@ -1015,7 +995,6 @@
         const targetDate = defaultDate || formatDateIso(STATE.currentDate);
         document.getElementById('inputDate').value = targetDate;
         
-        // HORÁRIO INTELIGENTE
         const smartStart = defaultStart || getSmartDefaultTime(targetDate);
         document.getElementById('inputStartTime').value = smartStart;
         
@@ -1051,7 +1030,7 @@
         while (added < totalDaysNeeded) {
           current.setDate(current.getDate() + 1);
           const day = current.getDay();
-          if (day !== 0 && day !== 6) { // Ignora Sábado (6) e Domingo (0)
+          if (day !== 0 && day !== 6) {
             dates.push(formatDateIso(current));
             added++;
           }
@@ -1069,18 +1048,16 @@
       const recurrenceType = document.getElementById('inputRecurrenceType').value;
       const recurrenceCount = parseInt(document.getElementById('inputRecurrenceCount').value) || 1;
 
-      // Gera a lista de datas (1 data se não for recorrente, ou várias se for)
       let targetDates = [baseDate];
       if (!editId && recurrenceType !== 'none') {
         targetDates = generateRecurrenceDates(baseDate, recurrenceType, recurrenceCount);
       }
 
-      // Validação de estoque para TODAS as datas da recorrencia
       for (let dateStr of targetDates) {
         const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startTime, endTime, editId);
         if (!isValidTime || (STATE.totalStock - maxUsed) < quantity) {
           const dateFormatted = new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
-          alert(`⚠️ Não há Chromebooks suficientes na data ${dateFormatted}! O agendamento recorrente foi cancelado para evitar superlotamento.`);
+          alert(`⚠️ Não há Chromebooks suficientes na data ${dateFormatted}! O agendamento foi cancelado.`);
           return;
         }
       }
