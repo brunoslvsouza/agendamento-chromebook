@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Agendamento de Chromebooks - Escola</title>
+  <link id="dynamicFavicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💻</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
@@ -32,14 +33,15 @@
   <!-- TOP BAR / HEADER -->
   <header class="bg-white border-b border-slate-200 px-3 py-2.5 md:px-6 md:py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0 shadow-sm z-20">
     
-    <!-- Linha Superior -->
+    <!-- Logo e Título -->
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-2.5">
-        <div class="bg-blue-600 text-white p-2 rounded-xl shadow-md flex items-center justify-center">
-          <i class="fa-solid fa-laptop text-lg md:text-xl"></i>
+        <div id="logoContainer" class="bg-blue-600 text-white p-2 rounded-xl shadow-md flex items-center justify-center overflow-hidden w-10 h-10">
+          <i id="headerLogoIcon" class="fa-solid fa-laptop text-lg md:text-xl"></i>
+          <img id="headerLogoImg" src="" alt="Logo Escola" class="w-full h-full object-cover hidden">
         </div>
         <div>
-          <h1 class="text-base md:text-xl font-bold text-slate-800 leading-tight">Chromebooks</h1>
+          <h1 id="headerSchoolTitle" class="text-base md:text-xl font-bold text-slate-800 leading-tight">Chromebooks</h1>
           <p class="text-[10px] md:text-xs text-slate-500 font-medium hidden sm:block">Agendamento Escolar</p>
         </div>
       </div>
@@ -64,10 +66,8 @@
       </div>
     </div>
 
-    <!-- Modos de Visão e Ações Desktop -->
+    <!-- Controles da Visão e Ações -->
     <div class="flex items-center justify-between sm:justify-end space-x-2">
-      
-      <!-- INDICADOR DO BANCO DE DADOS (CLICÁVEL) -->
       <button id="dbStatusBadge" onclick="openAdminModal()" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 transition hover:scale-105 shadow-sm" title="Clique para gerenciar a conexão">
         <span id="dbStatusText"><i class="fa-solid fa-database"></i> 🟠 Modo Local</span>
       </button>
@@ -95,7 +95,6 @@
   <!-- MAIN CONTENT LAYOUT -->
   <div class="flex flex-1 overflow-hidden relative">
 
-    <!-- SIDEBAR -->
     <aside id="sidebar" class="absolute md:relative inset-y-0 left-0 w-72 bg-white border-r border-slate-200 p-4 md:p-5 flex flex-col justify-between shrink-0 overflow-y-auto z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-xl md:shadow-none">
       <div class="space-y-5">
         <div class="flex items-center justify-between md:hidden pb-2 border-b border-slate-100">
@@ -144,7 +143,6 @@
 
     <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-30 hidden md:hidden"></div>
 
-    <!-- CALENDAR GRID CONTAINER -->
     <main class="flex-1 overflow-auto bg-white flex flex-col relative" id="calendarContainer">
     </main>
 
@@ -180,7 +178,7 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Data *</label>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Data Inicial *</label>
           <input type="date" id="inputDate" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
@@ -201,6 +199,35 @@
             <span id="stockCheckBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Calculando...</span>
           </div>
           <input type="number" id="inputQty" min="1" required placeholder="Ex: 25" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <!-- RECORRÊNCIA DE AGENDAMENTO -->
+        <div id="recurrenceBox" class="bg-blue-50/60 border border-blue-200 p-3 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold text-blue-900 uppercase">
+              <i class="fa-solid fa-rotate text-blue-600 mr-1"></i> Repetir Agendamento?
+            </label>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <select id="inputRecurrenceType" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="none">Não (Agendamento Único)</option>
+                <option value="weekly">Toda Semana (Mesmo dia)</option>
+                <option value="daily_workdays">Todos os dias úteis (Seg a Sex)</option>
+              </select>
+            </div>
+            <div id="recurrencePeriodBox" class="hidden">
+              <select id="inputRecurrenceCount" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="2">Por 2 Semanas</option>
+                <option value="4" selected>Por 4 Semanas (1 Mês)</option>
+                <option value="8">Por 8 Semanas (2 Meses)</option>
+                <option value="12">Por 12 Semanas (3 Meses)</option>
+              </select>
+            </div>
+          </div>
+          <p id="recurrenceHelpText" class="text-[10px] text-blue-700 font-medium hidden">
+            ℹ️ Agendará automaticamente para as próximas semanas mantendo o mesmo horário.
+          </p>
         </div>
 
         <div id="pinBox" class="bg-slate-50 p-3 rounded-xl border border-slate-200">
@@ -302,6 +329,26 @@
         <div class="p-6 overflow-y-auto space-y-6 flex-1">
           
           <div id="panelAdminConfig" class="space-y-5">
+            <!-- PERSONALIZAÇÃO DA MARCA DA ESCOLA -->
+            <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-200 space-y-3">
+              <h5 class="font-bold text-xs text-blue-900 uppercase tracking-wider">🎨 Personalização da Escola (Logo e Favicon)</h5>
+              <p class="text-xs text-slate-500">Cole os links das imagens da logo da escola e do ícone que fica na aba do navegador.</p>
+              
+              <div class="space-y-2 text-xs">
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">URL da Logo da Escola</label>
+                  <input type="url" id="inputAdminLogoUrl" placeholder="https://exemplo.com/logo-escola.png" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">URL do Ícone da Aba (Favicon)</label>
+                  <input type="url" id="inputAdminFaviconUrl" placeholder="https://exemplo.com/favicon.ico" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono">
+                </div>
+                <div class="pt-1 flex justify-end">
+                  <button id="btnSaveAdminBranding" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar Logo e Favicon</button>
+                </div>
+              </div>
+            </div>
+
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
               <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Estoque Total de Chromebooks</h5>
               <p class="text-xs text-slate-500">Ajuste a quantidade máxima de aparelhos disponíveis na escola.</p>
@@ -405,6 +452,7 @@
     const STATE = {
       totalStock: parseInt(localStorage.getItem('chromebook_stock')) || 50,
       adminPassword: localStorage.getItem('chromebook_admin_pass') || 'admin123',
+      branding: JSON.parse(localStorage.getItem('chromebook_branding')) || { logoUrl: '', faviconUrl: '' },
       isAdmin: false,
       reservations: [],
       currentDate: new Date(),
@@ -417,8 +465,10 @@
     const START_HOUR = 7;
     const END_HOUR = 21;
     let dbRef = null;
+    let settingsRef = null;
 
     document.addEventListener('DOMContentLoaded', () => {
+      applyBranding(STATE.branding);
       initFirebase();
       populateTimeDatalist();
       setupEventListeners();
@@ -430,6 +480,26 @@
       }
     });
 
+    function applyBranding(branding) {
+      if (!branding) return;
+      const logoImg = document.getElementById('headerLogoImg');
+      const logoIcon = document.getElementById('headerLogoIcon');
+
+      if (branding.logoUrl && branding.logoUrl.trim() !== '') {
+        logoImg.src = branding.logoUrl;
+        logoImg.classList.remove('hidden');
+        logoIcon.classList.add('hidden');
+      } else {
+        logoImg.classList.add('hidden');
+        logoIcon.classList.remove('hidden');
+      }
+
+      if (branding.faviconUrl && branding.faviconUrl.trim() !== '') {
+        const favicon = document.getElementById('dynamicFavicon');
+        if (favicon) favicon.href = branding.faviconUrl;
+      }
+    }
+
     function showToast(msg, isSuccess = true) {
       const toast = document.getElementById('toastNotification');
       const icon = document.getElementById('toastIcon');
@@ -437,7 +507,7 @@
 
       if (isSuccess) {
         toast.className = "fixed bottom-4 right-4 z-50 transform translate-y-0 opacity-100 transition-all duration-300 ease-in-out flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-emerald-600 shadow-xl";
-        icon.className = "fa-solid fa-cloud-arrow-up text-base";
+        icon.className = "fa-solid fa-circle-check text-base";
       } else {
         toast.className = "fixed bottom-4 right-4 z-50 transform translate-y-0 opacity-100 transition-all duration-300 ease-in-out flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-amber-600 shadow-xl";
         icon.className = "fa-solid fa-triangle-exclamation text-base";
@@ -466,7 +536,9 @@
             firebase.initializeApp(config);
           }
           dbRef = firebase.database().ref('reservations');
-          
+          settingsRef = firebase.database().ref('settings');
+
+          // Ouve mudanças nos Agendamentos
           dbRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -482,6 +554,24 @@
             renderCurrentView();
             if (STATE.isAdmin) renderAdminBookingsTable();
           });
+
+          // Ouve mudanças de Marca e Estoque na nuvem
+          settingsRef.on('value', (snapshot) => {
+            const settings = snapshot.val();
+            if (settings) {
+              if (settings.branding) {
+                STATE.branding = settings.branding;
+                localStorage.setItem('chromebook_branding', JSON.stringify(settings.branding));
+                applyBranding(settings.branding);
+              }
+              if (settings.totalStock) {
+                STATE.totalStock = settings.totalStock;
+                localStorage.setItem('chromebook_stock', settings.totalStock);
+                document.getElementById('displayTotalStock').innerText = settings.totalStock;
+              }
+            }
+          });
+
         } catch (e) {
           console.error("Erro no Firebase:", e);
           updateStatusBadge(false);
@@ -584,12 +674,32 @@
       document.getElementById('tabAdminList').addEventListener('click', () => switchAdminTab('list'));
       document.getElementById('tabAdminFirebase').addEventListener('click', () => switchAdminTab('firebase'));
 
+      // Salvar Logo e Favicon
+      document.getElementById('btnSaveAdminBranding').addEventListener('click', () => {
+        const logoUrl = document.getElementById('inputAdminLogoUrl').value.trim();
+        const faviconUrl = document.getElementById('inputAdminFaviconUrl').value.trim();
+        const branding = { logoUrl, faviconUrl };
+
+        STATE.branding = branding;
+        localStorage.setItem('chromebook_branding', JSON.stringify(branding));
+        applyBranding(branding);
+
+        if (STATE.dbConnected && settingsRef) {
+          settingsRef.child('branding').set(branding);
+        }
+        showToast("🎨 Logo e Favicon atualizados com sucesso!");
+      });
+
       document.getElementById('btnSaveAdminStock').addEventListener('click', () => {
         const val = parseInt(document.getElementById('inputAdminTotalStock').value);
         if (val && val > 0) {
           STATE.totalStock = val;
           localStorage.setItem('chromebook_stock', val);
           document.getElementById('displayTotalStock').innerText = val;
+
+          if (STATE.dbConnected && settingsRef) {
+            settingsRef.child('totalStock').set(val);
+          }
           showToast("✅ Estoque atualizado para " + val + " unidades!");
           renderCurrentView();
         }
@@ -620,6 +730,21 @@
         setTimeout(() => window.location.reload(), 1000);
       });
 
+      // Recorrência UI Toggle
+      document.getElementById('inputRecurrenceType').addEventListener('change', (e) => {
+        const val = e.target.value;
+        const periodBox = document.getElementById('recurrencePeriodBox');
+        const helpText = document.getElementById('recurrenceHelpText');
+
+        if (val !== 'none') {
+          periodBox.classList.remove('hidden');
+          helpText.classList.remove('hidden');
+        } else {
+          periodBox.classList.add('hidden');
+          helpText.classList.add('hidden');
+        }
+      });
+
       // Form Reserva
       document.getElementById('btnOpenNewModal').addEventListener('click', () => openBookingModal());
       document.getElementById('btnOpenNewModalMobile').addEventListener('click', () => openBookingModal());
@@ -638,6 +763,27 @@
         e.preventDefault();
         saveBooking();
       });
+    }
+
+    function getSmartDefaultTime(selectedDateStr) {
+      const todayStr = formatDateIso(new Date());
+      if (selectedDateStr === todayStr) {
+        const now = new Date();
+        let h = now.getHours();
+        let m = now.getMinutes();
+        
+        m = Math.ceil(m / 15) * 15;
+        if (m >= 60) {
+          h++;
+          m = 0;
+        }
+
+        if (h < START_HOUR) return "07:30";
+        if (h >= END_HOUR) return `${END_HOUR - 1}:30`;
+
+        return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      }
+      return "07:30";
     }
 
     function openAdminModal() {
@@ -676,6 +822,9 @@
       document.getElementById('adminAuthBox').classList.add('hidden');
       document.getElementById('adminContentBox').classList.remove('hidden');
       document.getElementById('inputAdminTotalStock').value = STATE.totalStock;
+
+      document.getElementById('inputAdminLogoUrl').value = STATE.branding.logoUrl || '';
+      document.getElementById('inputAdminFaviconUrl').value = STATE.branding.faviconUrl || '';
 
       const saved = localStorage.getItem('chromebook_fb_config');
       let fb = firebaseConfig;
@@ -838,8 +987,9 @@
       }
     }
 
-    function openBookingModal(defaultStart = '07:30', defaultDate = null, bookingToEdit = null) {
+    function openBookingModal(defaultStart = null, defaultDate = null, bookingToEdit = null) {
       document.getElementById('formBooking').reset();
+      const recurrenceBox = document.getElementById('recurrenceBox');
       
       if (bookingToEdit) {
         document.getElementById('modalBookingTitle').innerText = "Editar Agendamento";
@@ -852,13 +1002,24 @@
         document.getElementById('inputEndTime').value = bookingToEdit.endTime;
         document.getElementById('inputQty').value = bookingToEdit.quantity;
         document.getElementById('inputPin').value = bookingToEdit.pin || "";
+        recurrenceBox.classList.add('hidden'); // Oculta na edição simples
       } else {
+        recurrenceBox.classList.remove('hidden');
+        document.getElementById('inputRecurrenceType').value = 'none';
+        document.getElementById('recurrencePeriodBox').classList.add('hidden');
+        document.getElementById('recurrenceHelpText').classList.add('hidden');
+
         document.getElementById('modalBookingTitle').innerText = "Novo Agendamento";
         document.getElementById('inputEditId').value = "";
-        document.getElementById('inputDate').value = defaultDate || formatDateIso(STATE.currentDate);
-        document.getElementById('inputStartTime').value = defaultStart;
         
-        const startMin = timeToMinutes(defaultStart);
+        const targetDate = defaultDate || formatDateIso(STATE.currentDate);
+        document.getElementById('inputDate').value = targetDate;
+        
+        // HORÁRIO INTELIGENTE
+        const smartStart = defaultStart || getSmartDefaultTime(targetDate);
+        document.getElementById('inputStartTime').value = smartStart;
+        
+        const startMin = timeToMinutes(smartStart);
         const endMin = Math.min(startMin + 50, END_HOUR * 60);
         document.getElementById('inputEndTime').value = `${String(Math.floor(endMin / 60)).padStart(2,'0')}:${String(endMin % 60).padStart(2,'0')}`;
         document.getElementById('inputQty').value = 25;
@@ -872,38 +1033,86 @@
       document.getElementById('modalBooking').classList.add('hidden');
     }
 
+    function generateRecurrenceDates(startDateStr, type, count) {
+      const dates = [startDateStr];
+      const baseDate = new Date(startDateStr + 'T00:00:00');
+
+      if (type === 'weekly') {
+        for (let i = 1; i < count; i++) {
+          const next = new Date(baseDate);
+          next.setDate(baseDate.getDate() + (i * 7));
+          dates.push(formatDateIso(next));
+        }
+      } else if (type === 'daily_workdays') {
+        let totalDaysNeeded = count * 5;
+        let current = new Date(baseDate);
+        let added = 1;
+
+        while (added < totalDaysNeeded) {
+          current.setDate(current.getDate() + 1);
+          const day = current.getDay();
+          if (day !== 0 && day !== 6) { // Ignora Sábado (6) e Domingo (0)
+            dates.push(formatDateIso(current));
+            added++;
+          }
+        }
+      }
+      return dates;
+    }
+
     function saveBooking() {
       const editId = document.getElementById('inputEditId').value;
-      const bookingData = {
-        professor: document.getElementById('inputProf').value.trim(),
-        sala: document.getElementById('inputSala').value.trim(),
-        turma: document.getElementById('inputTurma').value.trim(),
-        date: document.getElementById('inputDate').value,
-        startTime: document.getElementById('inputStartTime').value,
-        endTime: document.getElementById('inputEndTime').value,
-        quantity: parseInt(document.getElementById('inputQty').value),
-        pin: document.getElementById('inputPin').value.trim()
-      };
+      const baseDate = document.getElementById('inputDate').value;
+      const startTime = document.getElementById('inputStartTime').value;
+      const endTime = document.getElementById('inputEndTime').value;
+      const quantity = parseInt(document.getElementById('inputQty').value);
+      const recurrenceType = document.getElementById('inputRecurrenceType').value;
+      const recurrenceCount = parseInt(document.getElementById('inputRecurrenceCount').value) || 1;
 
-      if (STATE.dbConnected && dbRef) {
-        if (editId) {
-          dbRef.child(editId).update(bookingData);
-        } else {
-          dbRef.push(bookingData);
+      // Gera a lista de datas (1 data se não for recorrente, ou várias se for)
+      let targetDates = [baseDate];
+      if (!editId && recurrenceType !== 'none') {
+        targetDates = generateRecurrenceDates(baseDate, recurrenceType, recurrenceCount);
+      }
+
+      // Validação de estoque para TODAS as datas da recorrencia
+      for (let dateStr of targetDates) {
+        const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startTime, endTime, editId);
+        if (!isValidTime || (STATE.totalStock - maxUsed) < quantity) {
+          const dateFormatted = new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
+          alert(`⚠️ Não há Chromebooks suficientes na data ${dateFormatted}! O agendamento recorrente foi cancelado para evitar superlotamento.`);
+          return;
         }
-        showToast("Agendamento salvo na nuvem!");
-      } else {
-        if (editId) {
-          const idx = STATE.reservations.findIndex(r => r.id === editId);
-          if (idx !== -1) STATE.reservations[idx] = { id: editId, ...bookingData };
+      }
+
+      const professor = document.getElementById('inputProf').value.trim();
+      const sala = document.getElementById('inputSala').value.trim();
+      const turma = document.getElementById('inputTurma').value.trim();
+      const pin = document.getElementById('inputPin').value.trim();
+      const groupId = targetDates.length > 1 ? 'group-' + Date.now() : null;
+
+      targetDates.forEach(dateStr => {
+        const bookingData = { professor, sala, turma, date: dateStr, startTime, endTime, quantity, pin, groupId };
+
+        if (STATE.dbConnected && dbRef) {
+          if (editId) dbRef.child(editId).update(bookingData);
+          else dbRef.push(bookingData);
         } else {
-          STATE.reservations.push({ id: 'res-' + Date.now(), ...bookingData });
+          if (editId) {
+            const idx = STATE.reservations.findIndex(r => r.id === editId);
+            if (idx !== -1) STATE.reservations[idx] = { id: editId, ...bookingData };
+          } else {
+            STATE.reservations.push({ id: 'res-' + Date.now() + Math.random().toString(36).substr(2,4), ...bookingData });
+          }
         }
+      });
+
+      if (!STATE.dbConnected) {
         localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.reservations));
-        showToast("Salvo localmente (Modo offline)", false);
         renderCurrentView();
       }
 
+      showToast(targetDates.length > 1 ? `✅ ${targetDates.length} agendamentos recorrentes criados!` : "Agendamento salvo!");
       closeBookingModal();
     }
 
@@ -1028,7 +1237,7 @@
         <div class="flex-1 flex flex-col h-full overflow-hidden">
           <div class="sticky top-0 bg-white border-b border-slate-200 z-20 px-3 md:px-6 py-2.5 flex items-center justify-between shadow-sm">
             <h2 class="text-xs md:text-sm font-bold text-slate-800">${STATE.currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
-            <button onclick="openBookingModal('07:30', '${dateStr}')" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-2.5 py-1 rounded-lg border border-blue-200 transition">
+            <button onclick="openBookingModal(null, '${dateStr}')" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-2.5 py-1 rounded-lg border border-blue-200 transition">
               + Agendar
             </button>
           </div>
@@ -1166,7 +1375,7 @@
         });
 
         html += `
-            <button onclick="openBookingModal('07:30', '${dateStr}')" class="w-full py-1.5 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-400 hover:border-blue-400 hover:text-blue-600 transition">
+            <button onclick="openBookingModal(null, '${dateStr}')" class="w-full py-1.5 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-400 hover:border-blue-400 hover:text-blue-600 transition">
               + Agendar
             </button>
           </div>
@@ -1193,7 +1402,7 @@
         <div class="p-3 sm:p-6 max-w-4xl mx-auto w-full space-y-3">
           <div class="flex justify-between items-center">
             <h3 class="text-sm sm:text-base font-bold text-slate-800">Agendamentos (${filtered.length})</h3>
-            <button onclick="openBookingModal('07:30', '${dateStr}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs shadow hover:bg-blue-700 transition">
+            <button onclick="openBookingModal(null, '${dateStr}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs shadow hover:bg-blue-700 transition">
               + Novo
             </button>
           </div>
