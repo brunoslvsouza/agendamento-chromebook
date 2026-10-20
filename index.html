@@ -298,6 +298,32 @@
     </div>
   </div>
 
+  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO -->
+  <div id="modalConfirmCancel" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 p-6 space-y-4">
+      <div class="flex items-center gap-3 text-rose-600">
+        <div class="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3 class="font-bold text-base text-slate-800">Cancelar Agendamento</h3>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed" id="confirmCancelText">
+        Escolha uma das opções abaixo para prosseguir com o cancelamento:
+      </p>
+      <div class="space-y-2 pt-2">
+        <button id="btnCancelSingleOnly" class="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-calendar-day text-slate-500"></i> Cancelar APENAS este dia
+        </button>
+        <button id="btnCancelFutureSeries" class="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow">
+          <i class="fa-solid fa-rectangle-xmark"></i> Cancelar ESTE e os PRÓXIMOS
+        </button>
+        <button id="btnAbortCancel" class="w-full py-2 px-4 border border-slate-300 text-slate-600 hover:bg-slate-50 font-bold text-xs rounded-xl transition">
+          ↩️ Voltar (Não cancelar nada)
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL PAINEL ADMIN -->
   <div id="modalAdmin" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden p-3 sm:p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
@@ -457,6 +483,7 @@
     const END_HOUR = 21;
     let dbRef = null;
     let settingsRef = null;
+    let pendingCancelBookingId = null;
 
     document.addEventListener('DOMContentLoaded', () => {
       applyBranding(STATE.branding);
@@ -732,6 +759,29 @@
         }
       });
 
+      // MODAL CANCELAMENTO - EVENTOS DOS BOTÕES
+      document.getElementById('btnCancelSingleOnly').addEventListener('click', () => {
+        if (pendingCancelBookingId) {
+          deleteBookingData(pendingCancelBookingId, 'single');
+          closeCancelModal();
+          closeDetailsModal();
+          if (STATE.isAdmin) renderAdminBookingsTable();
+        }
+      });
+
+      document.getElementById('btnCancelFutureSeries').addEventListener('click', () => {
+        if (pendingCancelBookingId) {
+          deleteBookingData(pendingCancelBookingId, 'future');
+          closeCancelModal();
+          closeDetailsModal();
+          if (STATE.isAdmin) renderAdminBookingsTable();
+        }
+      });
+
+      document.getElementById('btnAbortCancel').addEventListener('click', () => {
+        closeCancelModal();
+      });
+
       // Form Reserva
       document.getElementById('btnOpenNewModal').addEventListener('click', () => openBookingModal());
       document.getElementById('btnOpenNewModalMobile').addEventListener('click', () => openBookingModal());
@@ -878,23 +928,7 @@
     }
 
     function adminDeleteBooking(id) {
-      const booking = STATE.reservations.find(r => r.id === id);
-      if (!booking) return;
-
-      let scope = 'single';
-      if (booking.groupId) {
-        const cancelSeries = confirm(
-          "Admin: Esta reserva faz parte de uma série RECORRENTE!\n\n" +
-          "• Clique em OK para cancelar ESTE E OS PRÓXIMOS agendamentos da série.\n" +
-          "• Clique em CANCELAR para remover APENAS este agendamento individual."
-        );
-        if (cancelSeries) scope = 'future';
-      } else {
-        if (!confirm(`Admin: Tem certeza que deseja excluir a reserva de ${booking.professor}?`)) return;
-      }
-
-      deleteBookingData(id, scope);
-      renderAdminBookingsTable();
+      openCancelModal(id);
     }
 
     function formatDateIso(dateObj) { return dateObj.toISOString().split('T')[0]; }
@@ -1027,7 +1061,6 @@
       document.getElementById('modalBooking').classList.add('hidden');
     }
 
-    // GERADOR DE DATAS RECORRENTES FLEXÍVEL
     function generateRecurrenceDates(startDateStr, type, periodVal) {
       const dates = [];
       const baseDate = new Date(startDateStr + 'T00:00:00');
@@ -1048,7 +1081,7 @@
         let limitDays = isUntilEndOfYear ? 365 : maxOccurrences * 5;
         while (count < limitDays && current <= endOfYear) {
           const day = current.getDay();
-          if (day !== 0 && day !== 6) { // Segunda a Sexta
+          if (day !== 0 && day !== 6) {
             dates.push(formatDateIso(current));
             count++;
             if (!isUntilEndOfYear && count >= maxOccurrences * 5) break;
@@ -1179,21 +1212,8 @@
       const booking = STATE.reservations.find(r => r.id === STATE.selectedBookingId);
       if (!booking) return;
 
-      let scope = 'single';
-
       if (STATE.isAdmin) {
-        if (booking.groupId) {
-          const cancelSeries = confirm(
-            "Admin: Esta reserva faz parte de uma série RECORRENTE!\n\n" +
-            "• Clique em OK para cancelar ESTE E OS PRÓXIMOS agendamentos da série.\n" +
-            "• Clique em CANCELAR para remover APENAS este agendamento individual."
-          );
-          if (cancelSeries) scope = 'future';
-        } else {
-          if (!confirm(`Admin: Cancelar reserva de ${booking.professor}?`)) return;
-        }
-        deleteBookingData(booking.id, scope);
-        closeDetailsModal();
+        openCancelModal(booking.id);
         return;
       }
 
@@ -1201,21 +1221,34 @@
       if (!userPin) return;
 
       if (userPin === booking.pin) {
-        if (booking.groupId) {
-          const cancelSeries = confirm(
-            "Esta reserva faz parte de uma série RECORRENTE!\n\n" +
-            "• Clique em OK para cancelar ESTE E OS PRÓXIMOS agendamentos da série.\n" +
-            "• Clique em CANCELAR para remover APENAS este agendamento individual."
-          );
-          if (cancelSeries) scope = 'future';
-        } else {
-          if (!confirm(`Confirmar cancelamento da reserva de ${booking.professor}?`)) return;
-        }
-        deleteBookingData(booking.id, scope);
-        closeDetailsModal();
+        openCancelModal(booking.id);
       } else {
         alert("❌ PIN incorreto!");
       }
+    }
+
+    function openCancelModal(bookingId) {
+      const booking = STATE.reservations.find(r => r.id === bookingId);
+      if (!booking) return;
+
+      pendingCancelBookingId = bookingId;
+      const futureBtn = document.getElementById('btnCancelFutureSeries');
+      const textEl = document.getElementById('confirmCancelText');
+
+      if (booking.groupId) {
+        futureBtn.classList.remove('hidden');
+        textEl.innerText = `A reserva de ${booking.professor} faz parte de uma série RECORRENTE. Escolha uma das opções abaixo:`;
+      } else {
+        futureBtn.classList.add('hidden');
+        textEl.innerText = `Tem certeza que deseja cancelar a reserva de ${booking.professor}?`;
+      }
+
+      document.getElementById('modalConfirmCancel').classList.remove('hidden');
+    }
+
+    function closeCancelModal() {
+      document.getElementById('modalConfirmCancel').classList.add('hidden');
+      pendingCancelBookingId = null;
     }
 
     function deleteBookingData(id, scope = 'single') {
@@ -1368,13 +1401,20 @@
       return results.map(r => ({ ...r, totalColumns: totalCols }));
     }
 
+    // NAVEGAÇÃO DA SEMANA CORRIGIDA SEM ERROS NA VIRADA DE MÊS
     function renderWeekGrid(container) {
-      const curr = new Date(STATE.currentDate);
-      const firstDay = curr.getDate() - curr.getDay() + 1;
-      const weekDates = [];
+      const base = new Date(STATE.currentDate.getFullYear(), STATE.currentDate.getMonth(), STATE.currentDate.getDate());
+      const dayOfWeek = base.getDay(); // 0 = Dom, 1 = Seg, ..., 6 = Sáb
+      const distanceToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      
+      const monday = new Date(base);
+      monday.setDate(base.getDate() + distanceToMon);
 
+      const weekDates = [];
       for (let i = 0; i < 5; i++) {
-        weekDates.push(new Date(curr.setDate(firstDay + i)));
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        weekDates.push(d);
       }
 
       let html = `
