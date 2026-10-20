@@ -39,16 +39,18 @@
     <!-- Logo e Seletor de Equipamento -->
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-2.5">
+        <!-- Quadrado da Logo Exclusivo da Escola -->
         <div id="logoContainer" class="bg-blue-600 text-white p-2 rounded-xl shadow-md flex items-center justify-center overflow-hidden w-10 h-10 shrink-0">
-          <i id="headerLogoIcon" class="fa-solid fa-laptop text-lg md:text-xl"></i>
+          <i id="headerLogoIcon" class="fa-solid fa-school text-lg md:text-xl"></i>
           <img id="headerLogoImg" src="" alt="Logo Escola" class="w-full h-full object-cover hidden">
         </div>
         <div>
-          <!-- COMBOBOX DE SELEÇÃO DE EQUIPAMENTO -->
-          <div class="flex items-center gap-1.5">
+          <!-- COMBOBOX E ÍCONE DO EQUIPAMENTO -->
+          <div class="flex items-center gap-2">
+            <i id="headerDeviceIcon" class="fa-solid fa-laptop text-blue-600 text-base"></i>
             <select id="deviceTypeSelect" class="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 font-extrabold text-sm md:text-base rounded-lg px-2 py-0.5 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
-              <option value="chromebook">💻 Chromebooks</option>
-              <option value="tablet">📱 Tablets</option>
+              <option value="chromebook">Chromebooks</option>
+              <option value="tablet">Tablets</option>
             </select>
           </div>
           <p class="text-[10px] md:text-xs text-slate-500 font-medium hidden sm:block">Agendamento - Bento Benedini</p>
@@ -140,7 +142,7 @@
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Buscar</label>
           <div class="relative">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-            <input type="text" id="searchInput" placeholder="Professor, sala, turma..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <input type="text" id="searchInput" placeholder="Professor(a), sala, turma..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
           </div>
         </div>
       </div>
@@ -171,8 +173,8 @@
         <input type="hidden" id="inputEditId" value="">
 
         <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nome do Professor *</label>
-          <input type="text" id="inputProf" required placeholder="Ex: Prof. Carlos Silva" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nome do(a) Professor(a) *</label>
+          <input type="text" id="inputProf" required placeholder="Ex: Prof(a). Carlos Silva" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -271,7 +273,7 @@
       <div class="p-4 sm:p-6 space-y-4">
         <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
           <div class="flex justify-between items-center border-b border-slate-200 pb-2">
-            <span class="text-xs text-slate-500 uppercase font-bold">Professor</span>
+            <span class="text-xs text-slate-500 uppercase font-bold">Professor(a)</span>
             <span id="detailProf" class="text-xs sm:text-sm font-bold text-slate-800">---</span>
           </div>
           <div class="flex justify-between items-center">
@@ -431,7 +433,7 @@
                   <tr>
                     <th class="p-2.5">Equip.</th>
                     <th class="p-2.5">Data / Hora</th>
-                    <th class="p-2.5">Professor</th>
+                    <th class="p-2.5">Professor(a)</th>
                     <th class="p-2.5">Turma/Sala</th>
                     <th class="p-2.5 text-center">Qtd</th>
                     <th class="p-2.5 text-right">Ações</th>
@@ -530,9 +532,13 @@
     function updateDeviceUI() {
       const isTablet = STATE.deviceType === 'tablet';
       
-      // Ícones do Cabeçalho e Badges
-      const logoIcon = document.getElementById('headerLogoIcon');
-      if (logoIcon) logoIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button text-lg md:text-xl' : 'fa-solid fa-laptop text-lg md:text-xl';
+      // Ícone do equipamento ao lado da caixa de seleção
+      const deviceHeaderIcon = document.getElementById('headerDeviceIcon');
+      if (deviceHeaderIcon) {
+        deviceHeaderIcon.className = isTablet 
+          ? 'fa-solid fa-tablet-screen-button text-blue-600 text-base' 
+          : 'fa-solid fa-laptop text-blue-600 text-base';
+      }
       
       const badgeIcon = document.getElementById('badgeStockIcon');
       if (badgeIcon) badgeIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button text-blue-600' : 'fa-solid fa-laptop text-blue-600';
@@ -1416,9 +1422,6 @@
         <div class="flex-1 flex flex-col h-full overflow-hidden">
           <div class="sticky top-0 bg-white border-b border-slate-200 z-20 px-3 md:px-6 py-2.5 flex items-center justify-between shadow-sm">
             <h2 class="text-xs md:text-sm font-bold text-slate-800">${STATE.currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
-            <button onclick="openBookingModal(null, '${dateStr}')" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-2.5 py-1 rounded-lg border border-blue-200 transition">
-              + Agendar
-            </button>
           </div>
 
           <div class="flex-1 overflow-y-auto relative flex">
@@ -1620,7 +1623,7 @@
                 <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
                   <tr>
                     <th class="py-2.5 px-3">Horário</th>
-                    <th class="py-2.5 px-3">Professor</th>
+                    <th class="py-2.5 px-3">Professor(a)</th>
                     <th class="py-2.5 px-3">Sala/Turma</th>
                     <th class="py-2.5 px-3 text-center">Qtd</th>
                     <th class="py-2.5 px-3 text-right">Ação</th>
