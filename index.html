@@ -246,7 +246,7 @@
 
         <div id="pinBox" class="bg-slate-50 p-3 rounded-xl border border-slate-200">
           <label class="block text-xs font-bold text-slate-700 mb-1">PIN de Segurança (4 dígitos) *</label>
-          <p class="text-[10px] text-slate-500 mb-2">Crie uma senha numérica de 4 dígitos para alterar ou cancelar depois.</p>
+          <p class="text-[10px] text-slate-500 mb-2">🔒 Será salvo de forma criptografada (SHA-256) para sua privacidade.</p>
           <input type="password" id="inputPin" maxlength="4" pattern="[0-9]{4}" required placeholder="Ex: 1234" class="w-28 px-3 py-1.5 border border-slate-300 rounded-lg text-sm text-center font-bold tracking-widest focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
@@ -436,7 +436,7 @@
             </div>
 
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-              <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Alterar Senha do Admin</h5>
+              <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Alterar Senha do Admin (🔒 Criptografada em SHA-256)</h5>
               <p class="text-xs text-slate-500">Defina uma nova senha de acesso ao Painel de Administrador.</p>
               <div class="flex items-center gap-3">
                 <input type="password" id="inputNewAdminPass" placeholder="Nova Senha Admin" class="w-48 px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold">
@@ -450,7 +450,6 @@
             <div class="flex justify-between items-center">
               <div class="flex items-center gap-3">
                 <h5 class="font-bold text-xs text-slate-700 uppercase">Todas as Reservas Cadastradas</h5>
-                <!-- BOTÃO DE EXCLUSÃO EM MASSA DE RESERVAS SELECIONADAS -->
                 <button id="btnAdminBatchDelete" onclick="adminBatchDeleteBookings()" class="hidden px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition shadow flex items-center gap-1.5">
                   <i class="fa-solid fa-trash-can"></i> Excluir Selecionados (<span id="selectedAdminCount">0</span>)
                 </button>
@@ -521,13 +520,26 @@
     </div>
   </div>
 
-  <!-- SCRIPT DE FUNCIONAMENTO -->
+  <!-- SCRIPT DE FUNCIONAMENTO E CRIPTOGRAFIA SHA-256 -->
   <script>
+    // FUNÇÃO CRIPTOGRÁFICA CRIPTO-HASH SHA-256 NATIVA
+    async function hashText(text) {
+      if (!text) return '';
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Hash da senha inicial 'admin123'
+    const DEFAULT_ADMIN_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+
     const STATE = {
       deviceType: localStorage.getItem('chromebook_device_type') || 'chromebook',
       totalStockChromebook: parseInt(localStorage.getItem('stock_chromebook')) || 50,
       totalStockTablet: parseInt(localStorage.getItem('stock_tablet')) || 30,
-      adminPassword: localStorage.getItem('chromebook_admin_pass') || 'admin123',
+      adminPasswordHash: localStorage.getItem('chromebook_admin_hash') || DEFAULT_ADMIN_HASH,
       branding: JSON.parse(localStorage.getItem('chromebook_branding')) || { 
         logoUrl: '', 
         faviconUrl: '',
@@ -689,12 +701,14 @@
               if (settings.totalStockChromebook !== undefined) {
                 STATE.totalStockChromebook = settings.totalStockChromebook;
                 localStorage.setItem('stock_chromebook', settings.totalStockChromebook);
-              } else if (settings.totalStock !== undefined) {
-                STATE.totalStockChromebook = settings.totalStock;
               }
               if (settings.totalStockTablet !== undefined) {
                 STATE.totalStockTablet = settings.totalStockTablet;
                 localStorage.setItem('stock_tablet', settings.totalStockTablet);
+              }
+              if (settings.adminPasswordHash) {
+                STATE.adminPasswordHash = settings.adminPasswordHash;
+                localStorage.setItem('chromebook_admin_hash', settings.adminPasswordHash);
               }
               document.getElementById('displayTotalStock').innerText = getCurrentStock();
             }
@@ -877,12 +891,19 @@
         }
       });
 
-      document.getElementById('btnSaveAdminPass').addEventListener('click', () => {
+      // ALTERAR SENHA DO ADMIN COM CRIPTOGRAFIA
+      document.getElementById('btnSaveAdminPass').addEventListener('click', async () => {
         const pass = document.getElementById('inputNewAdminPass').value.trim();
         if (pass.length >= 4) {
-          STATE.adminPassword = pass;
-          localStorage.setItem('chromebook_admin_pass', pass);
-          showToast("✅ Senha do Admin alterada com sucesso!");
+          const passHash = await hashText(pass);
+          STATE.adminPasswordHash = passHash;
+          localStorage.setItem('chromebook_admin_hash', passHash);
+          
+          if (STATE.dbConnected && settingsRef) {
+            settingsRef.child('adminPasswordHash').set(passHash);
+          }
+
+          showToast("🔒 Senha do Admin criptografada e salva!");
           document.getElementById('inputNewAdminPass').value = "";
         } else {
           alert("A senha deve ter no mínimo 4 caracteres.");
@@ -995,9 +1016,11 @@
       editingAdminBookingId = null;
     }
 
-    function performAdminLogin() {
+    async function performAdminLogin() {
       const pass = document.getElementById('inputAdminPassword').value;
-      if (pass === STATE.adminPassword) {
+      const inputHash = await hashText(pass);
+
+      if (inputHash === STATE.adminPasswordHash) {
         STATE.isAdmin = true;
         showAdminContent();
         document.getElementById('inputAdminPassword').value = "";
@@ -1053,7 +1076,6 @@
       if (tabName === 'list') renderAdminBookingsTable();
     }
 
-    // RENDERIZADOR DA TABELA ADMIN COM EXCLUSÃO EM MASSA E EDIÇÃO DIRETA
     function renderAdminBookingsTable() {
       const tbody = document.getElementById('adminBookingsTableBody');
       tbody.innerHTML = "";
@@ -1125,7 +1147,6 @@
       updateAdminBatchDeleteBtn();
     }
 
-    // FUNÇÕES PARA SELEÇÃO E EXCLUSÃO EM MASSA
     function toggleSelectAllAdminBookings(master) {
       const checkboxes = document.querySelectorAll('.admin-booking-checkbox');
       checkboxes.forEach(cb => cb.checked = master.checked);
@@ -1331,7 +1352,7 @@
         document.getElementById('inputStartTime').value = bookingToEdit.startTime;
         document.getElementById('inputEndTime').value = bookingToEdit.endTime;
         document.getElementById('inputQty').value = bookingToEdit.quantity;
-        document.getElementById('inputPin').value = bookingToEdit.pin || "";
+        document.getElementById('inputPin').value = ""; // Não exibe o PIN antigo
         recurrenceBox.classList.add('hidden');
       } else {
         recurrenceBox.classList.remove('hidden');
@@ -1415,7 +1436,8 @@
       return dates;
     }
 
-    function saveBooking() {
+    // SALVA RESERVAS CRIPTOGRAFANDO O PIN DO PROFESSOR (SHA-256)
+    async function saveBooking() {
       const editId = document.getElementById('inputEditId').value;
       const baseDate = document.getElementById('inputDate').value;
       const startTime = document.getElementById('inputStartTime').value;
@@ -1444,12 +1466,13 @@
       const professor = document.getElementById('inputProf').value.trim();
       const sala = document.getElementById('inputSala').value.trim();
       const turma = document.getElementById('inputTurma').value.trim();
-      const pin = document.getElementById('inputPin').value.trim();
+      const pinRaw = document.getElementById('inputPin').value.trim();
+      const pinHash = await hashText(pinRaw);
       const groupId = targetDates.length > 1 ? 'group-' + Date.now() : null;
 
       targetDates.forEach(dateStr => {
         const bookingData = { 
-          professor, sala, turma, date: dateStr, startTime, endTime, quantity, pin, groupId,
+          professor, sala, turma, date: dateStr, startTime, endTime, quantity, pinHash, groupId,
           deviceType: STATE.deviceType
         };
 
@@ -1496,7 +1519,8 @@
       STATE.selectedBookingId = null;
     }
 
-    function handleEditFromDetails() {
+    // VERIFICA O PIN DIGITADO USANDO HASH SHA-256
+    async function handleEditFromDetails() {
       const booking = STATE.allReservations.find(r => r.id === STATE.selectedBookingId);
       if (!booking) return;
 
@@ -1509,7 +1533,13 @@
       const userPin = prompt("Digite o PIN de 4 dígitos cadastrado nesta reserva:");
       if (!userPin) return;
 
-      if (userPin === booking.pin) {
+      const userPinHash = await hashText(userPin);
+
+      // Suporta reservas antigas (texto puro) e reservas novas (hash)
+      if (booking.pinHash && userPinHash === booking.pinHash) {
+        closeDetailsModal();
+        openBookingModal(null, null, booking);
+      } else if (booking.pin && userPin === booking.pin) {
         closeDetailsModal();
         openBookingModal(null, null, booking);
       } else {
@@ -1517,7 +1547,7 @@
       }
     }
 
-    function handleDeleteFromDetails() {
+    async function handleDeleteFromDetails() {
       const booking = STATE.allReservations.find(r => r.id === STATE.selectedBookingId);
       if (!booking) return;
 
@@ -1529,7 +1559,11 @@
       const userPin = prompt("Para cancelar, digite o PIN de 4 dígitos desta reserva:");
       if (!userPin) return;
 
-      if (userPin === booking.pin) {
+      const userPinHash = await hashText(userPin);
+
+      if (booking.pinHash && userPinHash === booking.pinHash) {
+        openCancelModal(booking.id);
+      } else if (booking.pin && userPin === booking.pin) {
         openCancelModal(booking.id);
       } else {
         alert("❌ PIN incorreto!");
