@@ -1781,22 +1781,23 @@
       const todayIso = formatDateIso(now);
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-      // Filtra as reservas do dia e mantém no cálculo de pico apenas o que está vigente (em andamento ou futuro)
       const dayBookings = STATE.reservations.filter(r => r.date === dateStr);
-      const activeOrFutureBookings = dayBookings.filter(r => {
-        if (dateStr < todayIso) return false; // Dias passados não possuem horário vigente
-        if (dateStr > todayIso) return true;  // Dias futuros são totalmente vigentes
-        return timeToMinutes(r.endTime) > nowMinutes; // Hoje: ignora reservas já encerradas
+      
+      // Mantém apenas reservas que ainda não terminaram (ou de dias futuros)
+      const validBookings = dayBookings.filter(r => {
+        if (dateStr < todayIso) return false;
+        if (dateStr > todayIso) return true;
+        return timeToMinutes(r.endTime) > nowMinutes;
       });
 
-      document.getElementById('statReservations').innerText = dayBookings.length;
-      let peak = 0;
+      document.getElementById('statReservations').innerText = validBookings.length;
 
-      // Calcula o pico minuto a minuto a partir do horário vigente
-      const startCheck = (dateStr === todayIso) ? Math.max(START_HOUR * 60, nowMinutes) : START_HOUR * 60;
-      for (let t = startCheck; t < END_HOUR * 60; t++) {
+      let peak = 0;
+      const startMinute = (dateStr === todayIso) ? Math.max(START_HOUR * 60, nowMinutes) : START_HOUR * 60;
+
+      for (let t = startMinute; t < END_HOUR * 60; t++) {
         let current = 0;
-        activeOrFutureBookings.forEach(r => {
+        validBookings.forEach(r => {
           if (t >= timeToMinutes(r.startTime) && t < timeToMinutes(r.endTime)) {
             current += parseInt(r.quantity) || 0;
           }
@@ -1809,7 +1810,9 @@
       const pct = Math.min(100, Math.round((peak / currentStock) * 100));
       const pBar = document.getElementById('statProgressBar');
       pBar.style.width = `${pct}%`;
-      pBar.className = pct >= 100 ? "bg-rose-500 h-2 rounded-full transition-all" : (pct > 50 ? "bg-amber-500 h-2 rounded-full transition-all" : "bg-blue-600 h-2 rounded-full transition-all");
+      pBar.className = pct >= 100
+        ? "bg-rose-500 h-2 rounded-full transition-all"
+        : (pct > 50 ? "bg-amber-500 h-2 rounded-full transition-all" : "bg-blue-600 h-2 rounded-full transition-all");
     }
 
     function renderCurrentView() {
