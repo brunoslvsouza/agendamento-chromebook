@@ -592,14 +592,14 @@
         updateDeviceUI();
       }
 
-      // Atualiza o uso ao vivo e a linha do tempo a cada 30 segundos
+      // Atualiza o uso ao vivo, resumo vigente e a linha do tempo a cada 30 segundos
       setInterval(() => {
         updateLiveUsageStats();
+        updateSidebarStats(formatDateIso(STATE.currentDate));
         if (STATE.currentView === 'day' && formatDateIso(STATE.currentDate) === formatDateIso(new Date())) {
           renderDayGrid(document.getElementById('calendarContainer'), formatDateIso(STATE.currentDate));
         }
       }, 30000);
-    });
 
     function getCurrentStock() {
       return STATE.deviceType === 'tablet' ? STATE.totalStockTablet : STATE.totalStockChromebook;
@@ -1777,15 +1777,28 @@
     }
 
     function updateSidebarStats(dateStr) {
+      const now = new Date();
+      const todayIso = formatDateIso(now);
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+      // Filtra as reservas do dia e mantém no cálculo de pico apenas o que está vigente (em andamento ou futuro)
       const dayBookings = STATE.reservations.filter(r => r.date === dateStr);
+      const activeOrFutureBookings = dayBookings.filter(r => {
+        if (dateStr < todayIso) return false; // Dias passados não possuem horário vigente
+        if (dateStr > todayIso) return true;  // Dias futuros são totalmente vigentes
+        return timeToMinutes(r.endTime) > nowMinutes; // Hoje: ignora reservas já encerradas
+      });
+
       document.getElementById('statReservations').innerText = dayBookings.length;
       let peak = 0;
 
-      for (let h = START_HOUR * 60; h < END_HOUR * 60; h += 15) {
+      // Calcula o pico minuto a minuto a partir do horário vigente
+      const startCheck = (dateStr === todayIso) ? Math.max(START_HOUR * 60, nowMinutes) : START_HOUR * 60;
+      for (let t = startCheck; t < END_HOUR * 60; t++) {
         let current = 0;
-        dayBookings.forEach(r => {
-          if (h >= timeToMinutes(r.startTime) && h < timeToMinutes(r.endTime)) {
-            current += parseInt(r.quantity);
+        activeOrFutureBookings.forEach(r => {
+          if (t >= timeToMinutes(r.startTime) && t < timeToMinutes(r.endTime)) {
+            current += parseInt(r.quantity) || 0;
           }
         });
         if (current > peak) peak = current;
