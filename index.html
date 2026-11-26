@@ -7,14 +7,11 @@
   <link id="dynamicFavicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💻</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
   <!-- SDKs do Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
   <!-- ARQUIVO DE CONEXÃO SEPARADO DO FIREBASE -->
   <script src="firebase-config.js"></script>
-
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .hour-row { height: 60px; }
@@ -23,6 +20,19 @@
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    /* Estilo visual desfocado/bloqueado para horários passados */
+    .past-slot {
+      background-color: rgba(241, 245, 249, 0.85);
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(203, 213, 225, 0.25),
+        rgba(203, 213, 225, 0.25) 6px,
+        transparent 6px,
+        transparent 12px
+      );
+      backdrop-filter: blur(1.5px);
+      cursor: not-allowed !important;
+    }
   </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-800 antialiased h-screen flex flex-col overflow-hidden">
@@ -35,7 +45,6 @@
 
   <!-- TOP BAR / HEADER -->
   <header class="bg-white border-b border-slate-200 px-3 py-2.5 md:px-6 md:py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0 shadow-sm z-20">
-    
     <!-- Logo e Seletor de Equipamento -->
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-2.5">
@@ -80,7 +89,7 @@
     <!-- Controles da Visão e Ações -->
     <div class="flex items-center justify-between sm:justify-end space-x-2">
       <button id="dbStatusBadge" onclick="openAdminModal()" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 transition hover:scale-105 shadow-sm" title="Clique para gerenciar a conexão">
-        <span id="dbStatusText"><i class="fa-solid fa-database"></i> 🟠 Modo Local</span>
+        <span id="dbStatusText"><i class="fa-solid fa-database"></i> Modo Local</span>
       </button>
 
       <div class="bg-slate-100 p-1 rounded-xl flex space-x-1 border border-slate-200 w-full sm:w-auto justify-center">
@@ -105,19 +114,19 @@
 
   <!-- MAIN CONTENT LAYOUT -->
   <div class="flex flex-1 overflow-hidden relative">
-
     <aside id="sidebar" class="absolute md:relative inset-y-0 left-0 w-72 bg-white border-r border-slate-200 p-4 md:p-5 flex flex-col justify-between shrink-0 overflow-y-auto z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-xl md:shadow-none">
-      <div class="space-y-5">
+      <div class="space-y-4">
         <div class="flex items-center justify-between md:hidden pb-2 border-b border-slate-100">
           <span class="font-bold text-sm text-slate-800">Painel de Resumo</span>
           <button id="btnCloseSidebar" class="p-1 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-base"></i></button>
         </div>
-        
+
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Selecionar Data</label>
           <input type="date" id="miniDatePicker" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
+        <!-- RESUMO DO DIA (PICO) -->
         <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold uppercase text-slate-500">Resumo do Dia</span>
@@ -138,6 +147,33 @@
           </div>
         </div>
 
+        <!-- NOVO: USO NO MOMENTO ATUAL (TEMPO REAL) -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase text-slate-500 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Em Uso Agora
+            </span>
+            <span id="liveClockBadge" class="text-[10px] font-mono font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">--:--</span>
+          </div>
+          <div class="flex justify-between items-end">
+            <div>
+              <p class="text-2xl font-black text-emerald-600" id="statLiveAvailable">50</p>
+              <p class="text-[10px] text-slate-500">Disponíveis agora</p>
+            </div>
+            <div class="text-right">
+              <p class="text-lg font-black text-slate-700" id="statLiveUsed">0/50</p>
+              <p class="text-[10px] text-slate-500">Ocupados agora</p>
+            </div>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+            <div id="statLiveProgressBar" class="bg-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <div id="statLiveNextRelease" class="text-[10px] text-slate-600 font-semibold bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5">
+            <i class="fa-regular fa-clock text-blue-500"></i>
+            <span>Todos os aparelhos livres no momento.</span>
+          </div>
+        </div>
+
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Buscar</label>
           <div class="relative">
@@ -153,10 +189,7 @@
     </aside>
 
     <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-30 hidden md:hidden"></div>
-
-    <main class="flex-1 overflow-auto bg-white flex flex-col relative" id="calendarContainer">
-    </main>
-
+    <main class="flex-1 overflow-auto bg-white flex flex-col relative" id="calendarContainer"></main>
   </div>
 
   <!-- MODAL DE AGENDAMENTO -->
@@ -171,7 +204,6 @@
 
       <form id="formBooking" class="p-4 sm:p-6 space-y-3.5 overflow-y-auto">
         <input type="hidden" id="inputEditId" value="">
-
         <div>
           <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nome do(a) Professor(a) *</label>
           <input type="text" id="inputProf" required placeholder="Ex: Prof(a). Carlos Silva" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -240,13 +272,13 @@
             </div>
           </div>
           <p id="recurrenceHelpText" class="text-[10px] text-blue-700 font-medium hidden">
-            ℹ️ As reservas serão geradas automaticamente mantendo o mesmo horário e local.
+            As reservas serão geradas automaticamente mantendo o mesmo horário e local.
           </p>
         </div>
 
         <div id="pinBox" class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-          <label class="block text-xs font-bold text-slate-700 mb-1">PIN de Segurança (4 dígitos) *</label>
-          <p class="text-[10px] text-slate-500 mb-2">🔒 Será salvo de forma criptografada (SHA-256) para sua privacidade.</p>
+          <label id="pinLabel" class="block text-xs font-bold text-slate-700 mb-1">PIN de Segurança (4 dígitos) *</label>
+          <p id="pinHelperText" class="text-[10px] text-slate-500 mb-2">Será salvo de forma criptografada (SHA-256) para sua privacidade.</p>
           <input type="password" id="inputPin" maxlength="4" pattern="[0-9]{4}" required placeholder="Ex: 1234" class="w-28 px-3 py-1.5 border border-slate-300 rounded-lg text-sm text-center font-bold tracking-widest focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
@@ -269,7 +301,6 @@
         </h3>
         <button id="btnCloseDetails" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
-
       <div class="p-4 sm:p-6 space-y-4">
         <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
           <div class="flex justify-between items-center border-b border-slate-200 pb-2">
@@ -290,10 +321,9 @@
           </div>
           <div class="flex justify-between items-center pt-2 border-t border-slate-200">
             <span class="text-xs text-slate-500 uppercase font-bold">Quantidade</span>
-            <span id="detailQty" class="text-xs sm:text-sm font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">💻 ---</span>
+            <span id="detailQty" class="text-xs sm:text-sm font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">---</span>
           </div>
         </div>
-
         <div class="pt-2 flex justify-between items-center gap-2">
           <button id="btnDeleteDetail" class="flex-1 px-3 py-2 border border-rose-300 text-rose-600 hover:bg-rose-50 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1">
             <i class="fa-solid fa-trash-can"></i> Cancelar Reserva
@@ -326,7 +356,7 @@
           <i class="fa-solid fa-rectangle-xmark"></i> Cancelar ESTE e os PRÓXIMOS
         </button>
         <button id="btnAbortCancel" class="w-full py-2 px-4 border border-slate-300 text-slate-600 hover:bg-slate-50 font-bold text-xs rounded-xl transition">
-          ↩️ Voltar (Não cancelar nada)
+          Voltar (Não cancelar nada)
         </button>
       </div>
     </div>
@@ -335,7 +365,6 @@
   <!-- MODAL PAINEL ADMIN -->
   <div id="modalAdmin" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden p-3 sm:p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
-      
       <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-user-shield text-amber-400 text-lg"></i>
@@ -361,19 +390,17 @@
 
       <div id="adminContentBox" class="hidden flex-1 flex flex-col overflow-hidden">
         <div class="flex border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 shrink-0">
-          <button id="tabAdminConfig" class="px-5 py-3 border-b-2 border-amber-500 text-amber-600 bg-white">⚙️ Personalização & Configurações</button>
-          <button id="tabAdminList" class="px-5 py-3 border-b-2 border-transparent hover:text-slate-900">📋 Gerenciar Reservas</button>
-          <button id="tabAdminFirebase" class="px-5 py-3 border-b-2 border-transparent hover:text-slate-900">🔥 Conexão Firebase</button>
+          <button id="tabAdminConfig" class="px-5 py-3 border-b-2 border-amber-500 text-amber-600 bg-white">Personalização & Configurações</button>
+          <button id="tabAdminList" class="px-5 py-3 border-b-2 border-transparent hover:text-slate-900">Gerenciar Reservas</button>
+          <button id="tabAdminFirebase" class="px-5 py-3 border-b-2 border-transparent hover:text-slate-900">Conexão Firebase</button>
         </div>
 
         <div class="p-6 overflow-y-auto space-y-6 flex-1">
-          
           <div id="panelAdminConfig" class="space-y-5">
             <!-- PERSONALIZAÇÃO DE IMAGENS E TEXTOS DO SITE -->
             <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-200 space-y-3">
-              <h5 class="font-bold text-xs text-blue-900 uppercase tracking-wider">🎨 Personalização do Site e Imagens</h5>
+              <h5 class="font-bold text-xs text-blue-900 uppercase tracking-wider">Personalização do Site e Imagens</h5>
               <p class="text-xs text-slate-500">Faça upload da logo da escola e do favicon diretamente do seu dispositivo, e edite os textos do site.</p>
-              
               <div class="space-y-3 text-xs">
                 <!-- Upload de Logo -->
                 <div class="space-y-1">
@@ -382,17 +409,15 @@
                   <p class="text-[10px] text-slate-400">Ou cole a URL direta de uma imagem na web:</p>
                   <input type="url" id="inputAdminLogoUrl" placeholder="https://exemplo.com/logo-escola.png" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono">
                 </div>
-
                 <!-- Upload de Favicon -->
                 <div class="space-y-1">
                   <label class="block font-bold text-slate-700">Ícone da Aba do Navegador - Favicon (Upload)</label>
                   <input type="file" id="inputAdminFaviconFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
                   <input type="url" id="inputAdminFaviconUrl" placeholder="https://exemplo.com/favicon.ico" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono mt-1">
                 </div>
-
                 <!-- Edição de Textos do Site -->
                 <div class="pt-2 border-t border-blue-200/60 space-y-2">
-                  <h6 class="font-bold text-blue-900">📝 Editar Textos e Nomes do Site</h6>
+                  <h6 class="font-bold text-blue-900">Editar Textos e Nomes do Site</h6>
                   <div>
                     <label class="block font-bold text-slate-700 mb-1">Subtítulo do Cabeçalho</label>
                     <input type="text" id="inputAdminSchoolTitle" placeholder="Ex: Agendamento - Bento Benedini" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold">
@@ -402,10 +427,9 @@
                     <input type="text" id="inputAdminFooterText" placeholder="Ex: Controle de Equipamentos" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold">
                   </div>
                 </div>
-
                 <div class="pt-2 flex justify-end">
                   <button id="btnSaveAdminBranding" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow">
-                    💾 Salvar Personalização, Imagens e Textos
+                    Salvar Personalização, Imagens e Textos
                   </button>
                 </div>
               </div>
@@ -415,18 +439,16 @@
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
               <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Estoque Total de Equipamentos</h5>
               <p class="text-xs text-slate-500">Ajuste a quantidade máxima de aparelhos disponíveis para cada unidade.</p>
-              
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
-                  <label class="block text-xs font-bold text-slate-700">💻 Chromebooks</label>
+                  <label class="block text-xs font-bold text-slate-700">Chromebooks</label>
                   <div class="flex gap-2">
                     <input type="number" id="inputAdminStockChromebook" min="1" max="300" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-center">
                     <button id="btnSaveStockChromebook" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar</button>
                   </div>
                 </div>
-
                 <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
-                  <label class="block text-xs font-bold text-slate-700">📱 Tablets</label>
+                  <label class="block text-xs font-bold text-slate-700">Tablets</label>
                   <div class="flex gap-2">
                     <input type="number" id="inputAdminStockTablet" min="1" max="300" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-center">
                     <button id="btnSaveStockTablet" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar</button>
@@ -436,7 +458,7 @@
             </div>
 
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-              <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Alterar Senha do Admin (🔒 Criptografada em SHA-256)</h5>
+              <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Alterar Senha do Admin (Criptografada em SHA-256)</h5>
               <p class="text-xs text-slate-500">Defina uma nova senha de acesso ao Painel de Administrador.</p>
               <div class="flex items-center gap-3">
                 <input type="password" id="inputNewAdminPass" placeholder="Nova Senha Admin" class="w-48 px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold">
@@ -471,18 +493,16 @@
                     <th class="p-2 text-right">Ações</th>
                   </tr>
                 </thead>
-                <tbody id="adminBookingsTableBody" class="divide-y divide-slate-100">
-                </tbody>
+                <tbody id="adminBookingsTableBody" class="divide-y divide-slate-100"></tbody>
               </table>
             </div>
           </div>
 
           <div id="panelAdminFirebase" class="hidden space-y-4">
             <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 text-xs text-amber-800 space-y-1">
-              <p class="font-bold">🔥 Status da Conexão Firebase</p>
+              <p class="font-bold">Status da Conexão Firebase</p>
               <p id="adminFbStatusText">Verificando status...</p>
             </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               <div>
                 <label class="block font-bold text-slate-600 mb-1">apiKey</label>
@@ -501,14 +521,12 @@
                 <input type="text" id="fbProjectId" class="w-full px-3 py-1.5 border rounded-lg font-mono text-[11px]">
               </div>
             </div>
-
             <div class="pt-2 flex justify-end">
               <button id="btnSaveFirebaseConfig" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition">
                 Salvar e Conectar Nuvem
               </button>
             </div>
           </div>
-
         </div>
 
         <div class="bg-slate-100 px-6 py-3 border-t border-slate-200 flex justify-between items-center shrink-0">
@@ -516,7 +534,6 @@
           <button id="btnLogoutAdmin" class="text-xs text-rose-600 hover:text-rose-800 font-bold">Sair do Modo Admin</button>
         </div>
       </div>
-
     </div>
   </div>
 
@@ -524,12 +541,12 @@
   <script>
     // FUNÇÃO CRIPTOGRÁFICA CRIPTO-HASH SHA-256 NATIVA
     async function hashText(text) {
-      if (!text) return '';
+      if (!text) return "";
       const encoder = new TextEncoder();
       const data = encoder.encode(text);
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join("");
     }
 
     // Hash da senha inicial 'admin123'
@@ -540,9 +557,9 @@
       totalStockChromebook: parseInt(localStorage.getItem('stock_chromebook')) || 50,
       totalStockTablet: parseInt(localStorage.getItem('stock_tablet')) || 30,
       adminPasswordHash: localStorage.getItem('chromebook_admin_hash') || DEFAULT_ADMIN_HASH,
-      branding: JSON.parse(localStorage.getItem('chromebook_branding')) || { 
-        logoUrl: '', 
-        faviconUrl: '',
+      branding: JSON.parse(localStorage.getItem('chromebook_branding')) || {
+        logoUrl: "",
+        faviconUrl: "",
         schoolTitle: 'Agendamento - Bento Benedini',
         footerText: 'Controle de Equipamentos'
       },
@@ -551,7 +568,7 @@
       reservations: [],
       currentDate: new Date(),
       currentView: 'day',
-      filterQuery: '',
+      filterQuery: "",
       selectedBookingId: null,
       dbConnected: false
     };
@@ -569,11 +586,19 @@
       populateTimeDatalist();
       setupEventListeners();
       updateHeaderDateDisplay();
-      
+
       if (!STATE.dbConnected) {
         STATE.allReservations = JSON.parse(localStorage.getItem('chromebook_reservations')) || [];
         updateDeviceUI();
       }
+
+      // Atualiza o uso ao vivo e a linha do tempo a cada 30 segundos
+      setInterval(() => {
+        updateLiveUsageStats();
+        if (STATE.currentView === 'day' && formatDateIso(STATE.currentDate) === formatDateIso(new Date())) {
+          renderDayGrid(document.getElementById('calendarContainer'), formatDateIso(STATE.currentDate));
+        }
+      }, 30000);
     });
 
     function getCurrentStock() {
@@ -582,17 +607,14 @@
 
     function updateDeviceUI() {
       const isTablet = STATE.deviceType === 'tablet';
-      
       const deviceHeaderIcon = document.getElementById('headerDeviceIcon');
       if (deviceHeaderIcon) {
-        deviceHeaderIcon.className = isTablet 
-          ? 'fa-solid fa-tablet-screen-button text-blue-600 text-base' 
+        deviceHeaderIcon.className = isTablet
+          ? 'fa-solid fa-tablet-screen-button text-blue-600 text-base'
           : 'fa-solid fa-laptop text-blue-600 text-base';
       }
-      
       const badgeIcon = document.getElementById('badgeStockIcon');
       if (badgeIcon) badgeIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button text-blue-600' : 'fa-solid fa-laptop text-blue-600';
-
       const detailIcon = document.getElementById('detailModalIcon');
       if (detailIcon) detailIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button' : 'fa-solid fa-laptop';
 
@@ -604,14 +626,14 @@
 
       STATE.reservations = STATE.allReservations.filter(r => (r.deviceType || 'chromebook') === STATE.deviceType);
       renderCurrentView();
+      updateLiveUsageStats();
     }
 
     function applyBranding(branding) {
       if (!branding) return;
       const logoImg = document.getElementById('headerLogoImg');
       const logoIcon = document.getElementById('headerLogoIcon');
-
-      if (branding.logoUrl && branding.logoUrl.trim() !== '') {
+      if (branding.logoUrl && branding.logoUrl.trim() !== "") {
         logoImg.src = branding.logoUrl;
         logoImg.classList.remove('hidden');
         logoIcon.classList.add('hidden');
@@ -620,7 +642,7 @@
         logoIcon.classList.remove('hidden');
       }
 
-      if (branding.faviconUrl && branding.faviconUrl.trim() !== '') {
+      if (branding.faviconUrl && branding.faviconUrl.trim() !== "") {
         const favicon = document.getElementById('dynamicFavicon');
         if (favicon) favicon.href = branding.faviconUrl;
       }
@@ -663,7 +685,7 @@
           if (parsed.databaseURL && parsed.databaseURL.trim() !== "") {
             config = parsed;
           }
-        } catch(e) {}
+        } catch (e) {}
       }
 
       if (config.databaseURL && config.databaseURL.trim() !== "") {
@@ -681,9 +703,10 @@
             } else {
               STATE.allReservations = [];
             }
+
             if (!STATE.dbConnected) {
               STATE.dbConnected = true;
-              showToast("🟢 Nuvem Conectada! Sincronização em tempo real ativa.");
+              showToast("Nuvem Conectada! Sincronização em tempo real ativa.");
             }
             updateStatusBadge(true);
             updateDeviceUI();
@@ -711,9 +734,9 @@
                 localStorage.setItem('chromebook_admin_hash', settings.adminPasswordHash);
               }
               document.getElementById('displayTotalStock').innerText = getCurrentStock();
+              updateLiveUsageStats();
             }
           });
-
         } catch (e) {
           console.error("Erro no Firebase:", e);
           updateStatusBadge(false);
@@ -730,18 +753,18 @@
 
       if (connected) {
         badge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm cursor-pointer hover:scale-105 transition";
-        text.innerHTML = `<i class="fa-solid fa-cloud text-emerald-600"></i> 🟢 Nuvem Conectada`;
-        if (adminStatus) adminStatus.innerText = "✅ O sistema está perfeitamente conectado e sincronizando em tempo real com o Firebase!";
+        text.innerHTML = `<i class="fa-solid fa-cloud text-emerald-600"></i> Nuvem Conectada`;
+        if (adminStatus) adminStatus.innerText = "O sistema está perfeitamente conectado e sincronizando em tempo real com o Firebase!";
       } else {
         badge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 cursor-pointer hover:scale-105 transition";
-        text.innerHTML = `<i class="fa-solid fa-database text-amber-600"></i> 🟠 Modo Local (Sem Nuvem)`;
-        if (adminStatus) adminStatus.innerText = "⚠️ O sistema está no Modo Local. Crie o arquivo firebase-config.js com suas chaves para ativar a nuvem.";
+        text.innerHTML = `<i class="fa-solid fa-database text-amber-600"></i> Modo Local (Sem Nuvem)`;
+        if (adminStatus) adminStatus.innerText = "O sistema está no Modo Local. Crie o arquivo firebase-config.js com suas chaves para ativar a nuvem.";
       }
     }
 
     function populateTimeDatalist() {
       const datalist = document.getElementById('timeList');
-      datalist.innerHTML = '';
+      datalist.innerHTML = "";
       for (let h = START_HOUR; h <= END_HOUR; h++) {
         for (let m = 0; m < 60; m += 15) {
           const hh = String(h).padStart(2, '0');
@@ -767,7 +790,7 @@
         STATE.deviceType = e.target.value;
         localStorage.setItem('chromebook_device_type', STATE.deviceType);
         updateDeviceUI();
-        showToast(`Exibindo agendamentos de: ${STATE.deviceType === 'tablet' ? '📱 Tablets' : '💻 Chromebooks'}`);
+        showToast(`Exibindo agendamentos de: ${STATE.deviceType === 'tablet' ? 'Tablets' : 'Chromebooks'}`);
       });
 
       const sidebar = document.getElementById('sidebar');
@@ -827,16 +850,14 @@
       document.getElementById('btnCloseAdmin').addEventListener('click', closeAdminModal);
       document.getElementById('btnLoginAdmin').addEventListener('click', performAdminLogin);
       document.getElementById('btnLogoutAdmin').addEventListener('click', performAdminLogout);
-
       document.getElementById('tabAdminConfig').addEventListener('click', () => switchAdminTab('config'));
       document.getElementById('tabAdminList').addEventListener('click', () => switchAdminTab('list'));
       document.getElementById('tabAdminFirebase').addEventListener('click', () => switchAdminTab('firebase'));
 
-      // SALVAR BRANDING (IMAGENS UPLOAD + TEXTOS DO SITE)
+      // SALVAR BRANDING
       document.getElementById('btnSaveAdminBranding').addEventListener('click', async () => {
         let logoUrl = document.getElementById('inputAdminLogoUrl').value.trim();
         let faviconUrl = document.getElementById('inputAdminFaviconUrl').value.trim();
-        
         const logoFile = document.getElementById('inputAdminLogoFile').files[0];
         const faviconFile = document.getElementById('inputAdminFaviconFile').files[0];
 
@@ -844,7 +865,6 @@
           logoUrl = await readFileAsDataURL(logoFile);
           document.getElementById('inputAdminLogoUrl').value = logoUrl;
         }
-
         if (faviconFile) {
           faviconUrl = await readFileAsDataURL(faviconFile);
           document.getElementById('inputAdminFaviconUrl').value = faviconUrl;
@@ -852,9 +872,7 @@
 
         const schoolTitle = document.getElementById('inputAdminSchoolTitle').value.trim() || 'Agendamento - Bento Benedini';
         const footerText = document.getElementById('inputAdminFooterText').value.trim() || 'Controle de Equipamentos';
-
         const branding = { logoUrl, faviconUrl, schoolTitle, footerText };
-
         STATE.branding = branding;
         localStorage.setItem('chromebook_branding', JSON.stringify(branding));
         applyBranding(branding);
@@ -862,7 +880,7 @@
         if (STATE.dbConnected && settingsRef) {
           settingsRef.child('branding').set(branding);
         }
-        showToast("🎨 Personalização, Imagens e Textos salvos!");
+        showToast("Personalização, Imagens e Textos salvos!");
       });
 
       // Salvar Estoque Chromebooks
@@ -873,8 +891,9 @@
           localStorage.setItem('stock_chromebook', val);
           if (STATE.dbConnected && settingsRef) settingsRef.child('totalStockChromebook').set(val);
           document.getElementById('displayTotalStock').innerText = getCurrentStock();
-          showToast("✅ Estoque de Chromebooks atualizado para " + val + " unidades!");
+          showToast("Estoque de Chromebooks atualizado para " + val + " unidades!");
           renderCurrentView();
+          updateLiveUsageStats();
         }
       });
 
@@ -886,8 +905,9 @@
           localStorage.setItem('stock_tablet', val);
           if (STATE.dbConnected && settingsRef) settingsRef.child('totalStockTablet').set(val);
           document.getElementById('displayTotalStock').innerText = getCurrentStock();
-          showToast("✅ Estoque de Tablets atualizado para " + val + " unidades!");
+          showToast("Estoque de Tablets atualizado para " + val + " unidades!");
           renderCurrentView();
+          updateLiveUsageStats();
         }
       });
 
@@ -898,12 +918,10 @@
           const passHash = await hashText(pass);
           STATE.adminPasswordHash = passHash;
           localStorage.setItem('chromebook_admin_hash', passHash);
-          
           if (STATE.dbConnected && settingsRef) {
             settingsRef.child('adminPasswordHash').set(passHash);
           }
-
-          showToast("🔒 Senha do Admin criptografada e salva!");
+          showToast("Senha do Admin criptografada e salva!");
           document.getElementById('inputNewAdminPass').value = "";
         } else {
           alert("A senha deve ter no mínimo 4 caracteres.");
@@ -927,7 +945,6 @@
         const val = e.target.value;
         const periodBox = document.getElementById('recurrencePeriodBox');
         const helpText = document.getElementById('recurrenceHelpText');
-
         if (val !== 'none') {
           periodBox.classList.remove('hidden');
           helpText.classList.remove('hidden');
@@ -965,7 +982,6 @@
       document.getElementById('btnOpenNewModalMobile').addEventListener('click', () => openBookingModal());
       document.getElementById('btnCloseModal').addEventListener('click', closeBookingModal);
       document.getElementById('btnCancelModal').addEventListener('click', closeBookingModal);
-
       document.getElementById('btnCloseDetails').addEventListener('click', closeDetailsModal);
       document.getElementById('btnDeleteDetail').addEventListener('click', handleDeleteFromDetails);
       document.getElementById('btnEditDetail').addEventListener('click', handleEditFromDetails);
@@ -980,23 +996,34 @@
       });
     }
 
+    // VALIDAÇÃO DE DATA/HORA PASSADA
+    function isPastDateTime(dateStr, timeStr = null) {
+      const now = new Date();
+      const todayStr = formatDateIso(now);
+      if (dateStr < todayStr) return true;
+      if (dateStr > todayStr) return false;
+      if (timeStr) {
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const targetMinutes = timeToMinutes(timeStr);
+        return targetMinutes < nowMinutes;
+      }
+      return false;
+    }
+
     function getSmartDefaultTime(selectedDateStr) {
       const todayStr = formatDateIso(new Date());
       if (selectedDateStr === todayStr) {
         const now = new Date();
         let h = now.getHours();
         let m = now.getMinutes();
-        
-        m = Math.ceil(m / 15) * 15;
+        m = Math.ceil((m + 1) / 15) * 15;
         if (m >= 60) {
           h++;
           m = 0;
         }
-
         if (h < START_HOUR) return "07:30";
         if (h >= END_HOUR) return `${END_HOUR - 1}:30`;
-
-        return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
       }
       return "07:30";
     }
@@ -1019,13 +1046,12 @@
     async function performAdminLogin() {
       const pass = document.getElementById('inputAdminPassword').value;
       const inputHash = await hashText(pass);
-
       if (inputHash === STATE.adminPasswordHash) {
         STATE.isAdmin = true;
         showAdminContent();
         document.getElementById('inputAdminPassword').value = "";
       } else {
-        alert("❌ Senha de Admin incorreta!");
+        alert("Senha de Admin incorreta!");
       }
     }
 
@@ -1040,12 +1066,10 @@
     function showAdminContent() {
       document.getElementById('adminAuthBox').classList.add('hidden');
       document.getElementById('adminContentBox').classList.remove('hidden');
-
       document.getElementById('inputAdminStockChromebook').value = STATE.totalStockChromebook;
       document.getElementById('inputAdminStockTablet').value = STATE.totalStockTablet;
-
-      document.getElementById('inputAdminLogoUrl').value = STATE.branding.logoUrl || '';
-      document.getElementById('inputAdminFaviconUrl').value = STATE.branding.faviconUrl || '';
+      document.getElementById('inputAdminLogoUrl').value = STATE.branding.logoUrl || "";
+      document.getElementById('inputAdminFaviconUrl').value = STATE.branding.faviconUrl || "";
       document.getElementById('inputAdminSchoolTitle').value = STATE.branding.schoolTitle || 'Agendamento - Bento Benedini';
       document.getElementById('inputAdminFooterText').value = STATE.branding.footerText || 'Controle de Equipamentos';
 
@@ -1054,7 +1078,6 @@
       document.getElementById('fbAuthDomain').value = fb.authDomain || "";
       document.getElementById('fbDatabaseURL').value = fb.databaseURL || "";
       document.getElementById('fbProjectId').value = fb.projectId || "";
-
       updateStatusBadge(STATE.dbConnected);
       renderAdminBookingsTable();
     }
@@ -1072,7 +1095,6 @@
           panel.classList.add('hidden');
         }
       });
-
       if (tabName === 'list') renderAdminBookingsTable();
     }
 
@@ -1080,8 +1102,7 @@
       const tbody = document.getElementById('adminBookingsTableBody');
       tbody.innerHTML = "";
       document.getElementById('adminTotalBookingsCount').innerText = STATE.allReservations.length;
-
-      const sorted = [...STATE.allReservations].sort((a,b) => a.date.localeCompare(b.date));
+      const sorted = [...STATE.allReservations].sort((a, b) => a.date.localeCompare(b.date));
 
       if (sorted.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">Nenhuma reserva cadastrada.</td></tr>`;
@@ -1092,7 +1113,6 @@
         const deviceType = r.deviceType || 'chromebook';
         const deviceEmoji = deviceType === 'tablet' ? '📱' : '💻';
         const isEditing = (r.id === editingAdminBookingId);
-
         const tr = document.createElement('tr');
         tr.className = isEditing ? "bg-amber-50/90 transition border-y-2 border-amber-300" : "hover:bg-slate-50 transition";
 
@@ -1119,8 +1139,8 @@
               <input type="number" id="inlineQty_${r.id}" value="${r.quantity}" min="1" class="w-14 px-1 py-1 border border-slate-300 rounded text-xs font-black text-center">
             </td>
             <td class="p-1.5 text-right space-y-1">
-              <button onclick="adminSaveInlineBooking('${r.id}')" class="w-full px-2 py-1 bg-emerald-600 text-white font-bold rounded text-[11px] shadow hover:bg-emerald-700 transition">💾 Salvar</button>
-              <button onclick="adminCancelInlineEdit()" class="w-full px-2 py-1 bg-slate-200 text-slate-700 font-bold rounded text-[11px] hover:bg-slate-300 transition">❌ Cancelar</button>
+              <button onclick="adminSaveInlineBooking('${r.id}')" class="w-full px-2 py-1 bg-emerald-600 text-white font-bold rounded text-[11px] shadow hover:bg-emerald-700 transition">Salvar</button>
+              <button onclick="adminCancelInlineEdit()" class="w-full px-2 py-1 bg-slate-200 text-slate-700 font-bold rounded text-[11px] hover:bg-slate-300 transition">Cancelar</button>
             </td>
           `;
         } else {
@@ -1134,8 +1154,8 @@
             <td class="p-2.5 text-slate-600">${r.sala} (${r.turma})</td>
             <td class="p-2.5 text-center font-black">${r.quantity}</td>
             <td class="p-2.5 text-right space-x-1 whitespace-nowrap">
-              <button onclick="adminEditBooking('${r.id}')" class="px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold rounded">✏️ Editar</button>
-              <button onclick="adminDeleteBooking('${r.id}')" class="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded">🗑️ Excluir</button>
+              <button onclick="adminEditBooking('${r.id}')" class="px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold rounded">Editar</button>
+              <button onclick="adminDeleteBooking('${r.id}')" class="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded">Excluir</button>
             </td>
           `;
         }
@@ -1158,12 +1178,11 @@
       const btn = document.getElementById('btnAdminBatchDelete');
       const countSpan = document.getElementById('selectedAdminCount');
       const master = document.getElementById('selectAllAdminBookings');
-
       const total = document.querySelectorAll('.admin-booking-checkbox').length;
+
       if (master) {
         master.checked = (selected.length > 0 && selected.length === total);
       }
-
       if (selected.length > 0) {
         btn.classList.remove('hidden');
         countSpan.innerText = selected.length;
@@ -1175,17 +1194,16 @@
     function adminBatchDeleteBookings() {
       const selected = document.querySelectorAll('.admin-booking-checkbox:checked');
       const ids = Array.from(selected).map(cb => cb.value);
-
       if (ids.length === 0) return;
 
-      if (confirm(`⚠️ Tem certeza que deseja excluir os ${ids.length} agendamentos selecionados de uma só vez?`)) {
+      if (confirm(`Tem certeza que deseja excluir os ${ids.length} agendamentos selecionados de uma só vez?`)) {
         if (STATE.dbConnected && dbRef) {
           ids.forEach(id => dbRef.child(id).remove());
-          showToast(`✅ ${ids.length} agendamentos excluídos na nuvem!`);
+          showToast(`${ids.length} agendamentos excluídos na nuvem!`);
         } else {
           STATE.allReservations = STATE.allReservations.filter(r => !ids.includes(r.id));
           localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
-          showToast(`✅ ${ids.length} agendamentos excluídos localmente!`, false);
+          showToast(`${ids.length} agendamentos excluídos localmente!`, false);
           updateDeviceUI();
         }
         const master = document.getElementById('selectAllAdminBookings');
@@ -1218,7 +1236,7 @@
       const newQty = parseInt(document.getElementById(`inlineQty_${id}`).value);
 
       if (!newDate || !newStart || !newEnd || !newProf || !newSala || !newTurma || isNaN(newQty) || newQty < 1) {
-        alert("⚠️ Preencha todos os campos corretamente.");
+        alert("Preencha todos os campos corretamente.");
         return;
       }
 
@@ -1241,9 +1259,8 @@
         localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
         updateDeviceUI();
       }
-
       editingAdminBookingId = null;
-      showToast("✅ Reserva atualizada com sucesso!");
+      showToast("Reserva atualizada com sucesso!");
       renderAdminBookingsTable();
     }
 
@@ -1251,7 +1268,13 @@
       openCancelModal(id);
     }
 
-    function formatDateIso(dateObj) { return dateObj.toISOString().split('T')[0]; }
+    function formatDateIso(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
     function timeToMinutes(timeStr) {
       if (!timeStr) return 0;
       const [h, m] = timeStr.split(':').map(Number);
@@ -1270,7 +1293,7 @@
       ['viewDay', 'viewWeek', 'viewList'].forEach(id => {
         const btn = document.getElementById(id);
         const viewName = id.replace('view', '').toLowerCase();
-        btn.className = (viewName === STATE.currentView) 
+        btn.className = (viewName === STATE.currentView)
           ? "flex-1 sm:flex-none px-3 py-1 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm border border-slate-200 transition"
           : "flex-1 sm:flex-none px-3 py-1 text-xs font-semibold rounded-lg text-slate-600 transition";
       });
@@ -1279,7 +1302,6 @@
     function getPeakUsageInInterval(dateStr, startTimeStr, endTimeStr, ignoreId = null) {
       const reqStart = timeToMinutes(startTimeStr);
       const reqEnd = timeToMinutes(endTimeStr);
-
       if (reqEnd <= reqStart) return { maxUsed: 0, isValidTime: false };
 
       const dayBookings = STATE.reservations.filter(r => r.date === dateStr && r.id !== ignoreId);
@@ -1294,7 +1316,6 @@
         });
         if (currentUsed > maxConcurrent) maxConcurrent = currentUsed;
       }
-
       return { maxUsed: maxConcurrent, isValidTime: true };
     }
 
@@ -1304,7 +1325,6 @@
       const endStr = document.getElementById('inputEndTime').value;
       const qty = parseInt(document.getElementById('inputQty').value) || 0;
       const editId = document.getElementById('inputEditId').value;
-
       const badge = document.getElementById('stockCheckBadge');
       const submitBtn = document.getElementById('btnSaveBooking');
 
@@ -1314,8 +1334,15 @@
         return;
       }
 
-      const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startStr, endStr, editId);
+      // Bloqueia horários ou datas passadas (exceto se o Admin estiver editando um histórico antigo)
+      if (!STATE.isAdmin && isPastDateTime(dateStr, startStr)) {
+        badge.innerText = "Horário já passou";
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        submitBtn.disabled = true;
+        return;
+      }
 
+      const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startStr, endStr, editId);
       if (!isValidTime) {
         badge.innerText = "Horário Inválido";
         badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
@@ -1327,52 +1354,85 @@
       const available = currentStock - maxUsed;
 
       if (qty > available) {
-        badge.innerText = `⚠️ Indisponível! Restam ${available}`;
+        badge.innerText = `Indisponível! Restam ${available}`;
         badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
         submitBtn.disabled = true;
       } else {
-        badge.innerText = `🟢 Livre: ${available} de ${currentStock}`;
+        badge.innerText = `Livre: ${available} de ${currentStock}`;
         badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700";
         submitBtn.disabled = false;
       }
     }
 
     function openBookingModal(defaultStart = null, defaultDate = null, bookingToEdit = null) {
+      const targetDateCheck = bookingToEdit ? bookingToEdit.date : (defaultDate || formatDateIso(STATE.currentDate));
+      
+      // Se não for edição e não for Admin, bloqueia abertura para datas/horas passadas
+      if (!bookingToEdit && !STATE.isAdmin) {
+        if (isPastDateTime(targetDateCheck, defaultStart)) {
+          showToast("Não é permitido agendar para datas ou horários que já passaram.", false);
+          return;
+        }
+      }
+
       document.getElementById('formBooking').reset();
       const recurrenceBox = document.getElementById('recurrenceBox');
       const deviceLabel = STATE.deviceType === 'tablet' ? 'Tablets' : 'Chromebooks';
-      
+      const inputDateEl = document.getElementById('inputDate');
+      const inputPinEl = document.getElementById('inputPin');
+      const pinLabelEl = document.getElementById('pinLabel');
+      const pinHelperEl = document.getElementById('pinHelperText');
+
+      // Define data mínima como hoje para usuários comuns
+      if (!STATE.isAdmin) {
+        inputDateEl.min = formatDateIso(new Date());
+      } else {
+        inputDateEl.removeAttribute('min');
+      }
+
       if (bookingToEdit) {
         document.getElementById('modalBookingTitle').innerText = `Editar Agendamento (${deviceLabel})`;
         document.getElementById('inputEditId').value = bookingToEdit.id;
         document.getElementById('inputProf').value = bookingToEdit.professor;
         document.getElementById('inputSala').value = bookingToEdit.sala;
         document.getElementById('inputTurma').value = bookingToEdit.turma;
-        document.getElementById('inputDate').value = bookingToEdit.date;
+        inputDateEl.value = bookingToEdit.date;
         document.getElementById('inputStartTime').value = bookingToEdit.startTime;
         document.getElementById('inputEndTime').value = bookingToEdit.endTime;
         document.getElementById('inputQty').value = bookingToEdit.quantity;
-        document.getElementById('inputPin').value = ""; // Não exibe o PIN antigo
+
+        // PIN opcional na edição para preservar o original caso não seja alterado
+        inputPinEl.value = "";
+        inputPinEl.required = false;
+        pinLabelEl.innerText = "Alterar PIN de Segurança (Opcional)";
+        pinHelperEl.innerText = "Deixe em branco para manter o PIN original ou digite 4 dígitos para substituí-lo.";
+
         recurrenceBox.classList.add('hidden');
       } else {
         recurrenceBox.classList.remove('hidden');
         document.getElementById('inputRecurrenceType').value = 'none';
         document.getElementById('recurrencePeriodBox').classList.add('hidden');
         document.getElementById('recurrenceHelpText').classList.add('hidden');
-
         document.getElementById('modalBookingTitle').innerText = `Novo Agendamento - ${deviceLabel}`;
         document.getElementById('inputEditId').value = "";
-        
-        const targetDate = defaultDate || formatDateIso(STATE.currentDate);
-        document.getElementById('inputDate').value = targetDate;
-        
+
+        // Se a data selecionada no calendário for passada, assume hoje automaticamente
+        const todayIso = formatDateIso(new Date());
+        const targetDate = (!STATE.isAdmin && targetDateCheck < todayIso) ? todayIso : targetDateCheck;
+        inputDateEl.value = targetDate;
+
         const smartStart = defaultStart || getSmartDefaultTime(targetDate);
         document.getElementById('inputStartTime').value = smartStart;
-        
         const startMin = timeToMinutes(smartStart);
         const endMin = Math.min(startMin + 50, END_HOUR * 60);
-        document.getElementById('inputEndTime').value = `${String(Math.floor(endMin / 60)).padStart(2,'0')}:${String(endMin % 60).padStart(2,'0')}`;
+        document.getElementById('inputEndTime').value = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
         document.getElementById('inputQty').value = 25;
+
+        // PIN obrigatório na criação
+        inputPinEl.value = "";
+        inputPinEl.required = true;
+        pinLabelEl.innerText = "PIN de Segurança (4 dígitos) *";
+        pinHelperEl.innerText = "Será salvo de forma criptografada (SHA-256) para sua privacidade.";
       }
 
       document.getElementById('modalBooking').classList.remove('hidden');
@@ -1388,7 +1448,6 @@
       const baseDate = new Date(startDateStr + 'T00:00:00');
       const year = baseDate.getFullYear();
       const endOfYear = new Date(year, 11, 31, 23, 59, 59);
-
       let maxOccurrences = 52;
       let isUntilEndOfYear = (periodVal === 'end_of_year');
 
@@ -1397,7 +1456,6 @@
       }
 
       let current = new Date(baseDate);
-
       if (type === 'daily_workdays') {
         let count = 0;
         let limitDays = isUntilEndOfYear ? 365 : maxOccurrences * 5;
@@ -1432,11 +1490,10 @@
           current.setMonth(current.getMonth() + 1);
         }
       }
-
       return dates;
     }
 
-    // SALVA RESERVAS CRIPTOGRAFANDO O PIN DO PROFESSOR (SHA-256)
+    // SALVA RESERVAS PRESERVANDO OU ATUALIZANDO O PIN
     async function saveBooking() {
       const editId = document.getElementById('inputEditId').value;
       const baseDate = document.getElementById('inputDate').value;
@@ -1446,19 +1503,24 @@
       const recurrenceType = document.getElementById('inputRecurrenceType').value;
       const recurrencePeriod = document.getElementById('inputRecurrenceCount').value;
 
+      // Bloqueio final de segurança para datas/horários anteriores
+      if (!STATE.isAdmin && isPastDateTime(baseDate, startTime)) {
+        alert("Não é permitido criar ou mover agendamentos para datas ou horários anteriores ao momento atual.");
+        return;
+      }
+
       let targetDates = [baseDate];
       if (!editId && recurrenceType !== 'none') {
         targetDates = generateRecurrenceDates(baseDate, recurrenceType, recurrencePeriod);
       }
 
       const currentStock = getCurrentStock();
-
       for (let dateStr of targetDates) {
         const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startTime, endTime, editId);
         if (!isValidTime || (currentStock - maxUsed) < quantity) {
           const dateFormatted = new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
           const deviceLabel = STATE.deviceType === 'tablet' ? 'Tablets' : 'Chromebooks';
-          alert(`⚠️ Não há ${deviceLabel} suficientes na data ${dateFormatted}! O agendamento foi cancelado.`);
+          alert(`Não há ${deviceLabel} suficientes na data ${dateFormatted}! O agendamento foi cancelado.`);
           return;
         }
       }
@@ -1467,14 +1529,52 @@
       const sala = document.getElementById('inputSala').value.trim();
       const turma = document.getElementById('inputTurma').value.trim();
       const pinRaw = document.getElementById('inputPin').value.trim();
-      const pinHash = await hashText(pinRaw);
-      const groupId = targetDates.length > 1 ? 'group-' + Date.now() : null;
+
+      let pinHash = "";
+      let existingBooking = null;
+
+      if (editId) {
+        existingBooking = STATE.allReservations.find(r => r.id === editId);
+        if (pinRaw.length === 4) {
+          // Usuário informou um novo PIN: reescreve com o novo hash
+          pinHash = await hashText(pinRaw);
+        } else if (pinRaw.length > 0 && pinRaw.length < 4) {
+          alert("Se desejar alterar o PIN, digite exatamente 4 números.");
+          return;
+        } else {
+          // Usuário deixou em branco: preserva o PIN original
+          pinHash = existingBooking ? (existingBooking.pinHash || "") : "";
+        }
+      } else {
+        if (pinRaw.length !== 4) {
+          alert("O PIN de segurança deve conter 4 dígitos numéricos.");
+          return;
+        }
+        pinHash = await hashText(pinRaw);
+      }
+
+      const groupId = editId
+        ? (existingBooking ? (existingBooking.groupId || null) : null)
+        : (targetDates.length > 1 ? 'group-' + Date.now() : null);
 
       targetDates.forEach(dateStr => {
-        const bookingData = { 
-          professor, sala, turma, date: dateStr, startTime, endTime, quantity, pinHash, groupId,
+        const bookingData = {
+          professor,
+          sala,
+          turma,
+          date: dateStr,
+          startTime,
+          endTime,
+          quantity,
+          pinHash,
+          groupId,
           deviceType: STATE.deviceType
         };
+
+        // Mantém campo legado 'pin' se for edição sem alteração e a reserva antiga só tinha 'pin' em texto
+        if (editId && !pinRaw && existingBooking && !existingBooking.pinHash && existingBooking.pin) {
+          bookingData.pin = existingBooking.pin;
+        }
 
         if (STATE.dbConnected && dbRef) {
           if (editId) dbRef.child(editId).update(bookingData);
@@ -1484,33 +1584,29 @@
             const idx = STATE.allReservations.findIndex(r => r.id === editId);
             if (idx !== -1) STATE.allReservations[idx] = { id: editId, ...bookingData };
           } else {
-            STATE.allReservations.push({ id: 'res-' + Date.now() + Math.random().toString(36).substr(2,4), ...bookingData });
+            STATE.allReservations.push({ id: 'res-' + Date.now() + Math.random().toString(36).substr(2, 4), ...bookingData });
           }
         }
       });
 
       if (!STATE.dbConnected) {
         localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
-        updateDeviceUI();
       }
-
-      showToast(targetDates.length > 1 ? `✅ ${targetDates.length} agendamentos recorrentes criados!` : "Agendamento salvo!");
+      updateDeviceUI();
+      showToast(editId ? "Agendamento atualizado!" : (targetDates.length > 1 ? `${targetDates.length} agendamentos recorrentes criados!` : "Agendamento salvo!"));
       closeBookingModal();
     }
 
     function openDetailsModal(bookingId) {
       const booking = STATE.allReservations.find(r => r.id === bookingId);
       if (!booking) return;
-
       STATE.selectedBookingId = bookingId;
       document.getElementById('detailProf').innerText = booking.professor;
       document.getElementById('detailTime').innerText = `${booking.startTime} às ${booking.endTime}`;
       document.getElementById('detailDate').innerText = new Date(booking.date + 'T00:00:00').toLocaleDateString('pt-BR');
       document.getElementById('detailLocation').innerText = `${booking.sala} (${booking.turma})`;
-      
       const emoji = (booking.deviceType || 'chromebook') === 'tablet' ? '📱' : '💻';
       document.getElementById('detailQty').innerText = `${emoji} ${booking.quantity} aparelhos`;
-
       document.getElementById('modalDetails').classList.remove('hidden');
     }
 
@@ -1532,10 +1628,8 @@
 
       const userPin = prompt("Digite o PIN de 4 dígitos cadastrado nesta reserva:");
       if (!userPin) return;
-
       const userPinHash = await hashText(userPin);
 
-      // Suporta reservas antigas (texto puro) e reservas novas (hash)
       if (booking.pinHash && userPinHash === booking.pinHash) {
         closeDetailsModal();
         openBookingModal(null, null, booking);
@@ -1543,7 +1637,7 @@
         closeDetailsModal();
         openBookingModal(null, null, booking);
       } else {
-        alert("❌ PIN incorreto!");
+        alert("PIN incorreto!");
       }
     }
 
@@ -1558,7 +1652,6 @@
 
       const userPin = prompt("Para cancelar, digite o PIN de 4 dígitos desta reserva:");
       if (!userPin) return;
-
       const userPinHash = await hashText(userPin);
 
       if (booking.pinHash && userPinHash === booking.pinHash) {
@@ -1566,14 +1659,13 @@
       } else if (booking.pin && userPin === booking.pin) {
         openCancelModal(booking.id);
       } else {
-        alert("❌ PIN incorreto!");
+        alert("PIN incorreto!");
       }
     }
 
     function openCancelModal(bookingId) {
       const booking = STATE.allReservations.find(r => r.id === bookingId);
       if (!booking) return;
-
       pendingCancelBookingId = bookingId;
       const futureBtn = document.getElementById('btnCancelFutureSeries');
       const textEl = document.getElementById('confirmCancelText');
@@ -1585,7 +1677,6 @@
         futureBtn.classList.add('hidden');
         textEl.innerText = `Tem certeza que deseja cancelar a reserva de ${booking.professor}?`;
       }
-
       document.getElementById('modalConfirmCancel').classList.remove('hidden');
     }
 
@@ -1599,7 +1690,6 @@
       if (!targetBooking) return;
 
       let toDeleteIds = [id];
-
       if (scope === 'future' && targetBooking.groupId) {
         toDeleteIds = STATE.allReservations
           .filter(r => r.groupId === targetBooking.groupId && r.date >= targetBooking.date)
@@ -1610,24 +1700,93 @@
         toDeleteIds.forEach(delId => {
           dbRef.child(delId).remove();
         });
-        showToast(`✅ ${toDeleteIds.length} reserva(s) cancelada(s) na nuvem!`);
+        showToast(`${toDeleteIds.length} reserva(s) cancelada(s) na nuvem!`);
       } else {
         STATE.allReservations = STATE.allReservations.filter(r => !toDeleteIds.includes(r.id));
         localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
-        showToast(`✅ ${toDeleteIds.length} reserva(s) removida(s) localmente!`, false);
+        showToast(`${toDeleteIds.length} reserva(s) removida(s) localmente!`, false);
         updateDeviceUI();
+      }
+    }
+
+    // ATUALIZA O GRÁFICO/INDICADOR DO MOMENTO ATUAL (TEMPO REAL)
+    function updateLiveUsageStats() {
+      const now = new Date();
+      const todayStr = formatDateIso(now);
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+
+      const clockBadge = document.getElementById('liveClockBadge');
+      if (clockBadge) clockBadge.innerText = `${hh}:${mm}`;
+
+      const activeBookings = STATE.reservations.filter(r =>
+        r.date === todayStr &&
+        nowMinutes >= timeToMinutes(r.startTime) &&
+        nowMinutes < timeToMinutes(r.endTime)
+      );
+
+      let usedNow = 0;
+      let latestEndMinutes = 0;
+      let latestEndStr = "";
+
+      activeBookings.forEach(r => {
+        usedNow += parseInt(r.quantity) || 0;
+        const endM = timeToMinutes(r.endTime);
+        if (endM > latestEndMinutes) {
+          latestEndMinutes = endM;
+          latestEndStr = r.endTime;
+        }
+      });
+
+      const currentStock = getCurrentStock();
+      const availableNow = Math.max(0, currentStock - usedNow);
+      const pct = Math.min(100, Math.round((usedNow / currentStock) * 100));
+
+      const availEl = document.getElementById('statLiveAvailable');
+      const usedEl = document.getElementById('statLiveUsed');
+      const barEl = document.getElementById('statLiveProgressBar');
+      const releaseEl = document.getElementById('statLiveNextRelease');
+
+      if (availEl) availEl.innerText = availableNow;
+      if (usedEl) usedEl.innerText = `${usedNow}/${currentStock}`;
+      if (barEl) {
+        barEl.style.width = `${pct}%`;
+        barEl.className = pct >= 100
+          ? "bg-rose-500 h-2 rounded-full transition-all duration-300"
+          : (pct > 50
+            ? "bg-amber-500 h-2 rounded-full transition-all duration-300"
+            : "bg-emerald-500 h-2 rounded-full transition-all duration-300");
+      }
+
+      if (releaseEl) {
+        if (usedNow > 0) {
+          // Encontra também o horário mais próximo de liberação parcial
+          const earliestEnd = activeBookings.reduce((min, r) =>
+            timeToMinutes(r.endTime) < timeToMinutes(min) ? r.endTime : min, activeBookings[0].endTime
+          );
+          if (earliestEnd !== latestEndStr) {
+            releaseEl.innerHTML = `<i class="fa-regular fa-clock text-amber-600"></i> <span>Ocupados até <strong>${earliestEnd}</strong> (todos livres às <strong>${latestEndStr}</strong>)</span>`;
+          } else {
+            releaseEl.innerHTML = `<i class="fa-regular fa-clock text-amber-600"></i> <span>Ocupados até às <strong>${latestEndStr}</strong></span>`;
+          }
+        } else {
+          releaseEl.innerHTML = `<i class="fa-regular fa-clock text-emerald-600"></i> <span>Todos os aparelhos livres no momento.</span>`;
+        }
       }
     }
 
     function updateSidebarStats(dateStr) {
       const dayBookings = STATE.reservations.filter(r => r.date === dateStr);
       document.getElementById('statReservations').innerText = dayBookings.length;
-
       let peak = 0;
+
       for (let h = START_HOUR * 60; h < END_HOUR * 60; h += 15) {
         let current = 0;
         dayBookings.forEach(r => {
-          if (h >= timeToMinutes(r.startTime) && h < timeToMinutes(r.endTime)) current += parseInt(r.quantity);
+          if (h >= timeToMinutes(r.startTime) && h < timeToMinutes(r.endTime)) {
+            current += parseInt(r.quantity);
+          }
         });
         if (current > peak) peak = current;
       }
@@ -1644,6 +1803,7 @@
       const container = document.getElementById('calendarContainer');
       const dateStr = formatDateIso(STATE.currentDate);
       updateSidebarStats(dateStr);
+      updateLiveUsageStats();
 
       if (STATE.currentView === 'day') renderDayGrid(container, dateStr);
       else if (STATE.currentView === 'week') renderWeekGrid(container);
@@ -1653,52 +1813,78 @@
     function renderDayGrid(container, dateStr) {
       let filtered = STATE.reservations.filter(r => r.date === dateStr);
       if (STATE.filterQuery) {
-        filtered = filtered.filter(r => 
+        filtered = filtered.filter(r =>
           r.professor.toLowerCase().includes(STATE.filterQuery) ||
           r.turma.toLowerCase().includes(STATE.filterQuery) ||
           r.sala.toLowerCase().includes(STATE.filterQuery)
         );
       }
 
+      const now = new Date();
+      const todayIso = formatDateIso(now);
+      const isPastDay = dateStr < todayIso;
+      const isToday = dateStr === todayIso;
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
       let html = `
         <div class="flex-1 flex flex-col h-full overflow-hidden">
           <div class="sticky top-0 bg-white border-b border-slate-200 z-20 px-3 md:px-6 py-2.5 flex items-center justify-between shadow-sm">
             <h2 class="text-xs md:text-sm font-bold text-slate-800">${STATE.currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
+            ${isPastDay && !STATE.isAdmin ? '<span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md"><i class="fa-solid fa-lock mr-1"></i>Data encerrada</span>' : ''}
           </div>
-
           <div class="flex-1 overflow-y-auto relative flex">
             <div class="w-12 md:w-16 bg-slate-50 border-r border-slate-200 shrink-0 text-slate-400 font-mono text-[10px] md:text-xs select-none">
       `;
 
       for (let h = START_HOUR; h < END_HOUR; h++) {
-        html += `<div class="h-[60px] border-b border-slate-200 pr-1 md:pr-2 pt-1 text-right font-semibold">${String(h).padStart(2,'0')}:00</div>`;
+        const slotEndMin = (h + 1) * 60;
+        const isPastHour = !STATE.isAdmin && (isPastDay || (isToday && slotEndMin <= nowMinutes));
+        html += `<div class="h-[60px] border-b border-slate-200 pr-1 md:pr-2 pt-1 text-right font-semibold ${isPastHour ? 'opacity-40' : ''}">${String(h).padStart(2, '0')}:00</div>`;
       }
 
-      html += `
-            </div>
-            <div class="flex-1 relative bg-white">
-      `;
+      html += `</div><div class="flex-1 relative bg-white">`;
 
       for (let h = START_HOUR; h < END_HOUR; h++) {
-        html += `
-          <div class="h-[60px] border-b border-slate-100 group cursor-pointer hover:bg-blue-50/30 transition"
-               onclick="openBookingModal('${String(h).padStart(2,'0')}:00', '${dateStr}')">
-          </div>
-        `;
+        const slotStartStr = `${String(h).padStart(2, '0')}:00`;
+        const slotStartMin = h * 60;
+        const slotEndMin = (h + 1) * 60;
+        const isHourCompletelyPast = !STATE.isAdmin && (isPastDay || (isToday && slotEndMin <= nowMinutes));
+
+        if (isHourCompletelyPast) {
+          html += `
+            <div class="h-[60px] border-b border-slate-200/70 past-slot flex items-center justify-end pr-3 select-none"
+                 title="Horário encerrado">
+              <span class="text-[10px] text-slate-400/80 font-medium italic">Horário encerrado</span>
+            </div>
+          `;
+        } else {
+          // Se estiver na hora atual (ex: são 09:20 no bloco das 09:00), sugere o próximo horário válido (09:30)
+          const targetClickTime = (isToday && slotStartMin < nowMinutes) ? getSmartDefaultTime(dateStr) : slotStartStr;
+          html += `
+            <div class="h-[60px] border-b border-slate-100 group cursor-pointer hover:bg-blue-50/30 transition"
+                 onclick="openBookingModal('${targetClickTime}', '${dateStr}')">
+            </div>
+          `;
+        }
       }
 
-      // LINHA DE HORÁRIO ATUAL
-      const todayIso = formatDateIso(new Date());
-      if (dateStr === todayIso) {
-        const now = new Date();
-        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      // FAIXA DESFOCADA EXATA ATÉ O MINUTO ATUAL + LINHA DE HORÁRIO ATUAL
+      if (isToday) {
         const startMinutes = START_HOUR * 60;
         const endMinutes = END_HOUR * 60;
-
+        if (nowMinutes > startMinutes) {
+          const cappedMinutes = Math.min(nowMinutes, endMinutes);
+          const pastHeightPx = ((cappedMinutes - startMinutes) / 60) * 60;
+          if (!STATE.isAdmin) {
+            html += `
+              <div class="absolute left-0 right-0 top-0 past-slot pointer-events-none z-10 border-b border-rose-300/60" style="height: ${pastHeightPx}px;"></div>
+            `;
+          }
+        }
         if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
           const topPx = ((nowMinutes - startMinutes) / 60) * 60;
           html += `
-            <div class="absolute left-0 right-0 border-b-2 border-rose-500/70 z-20 pointer-events-none flex items-center" style="top: ${topPx}px;">
+            <div class="absolute left-0 right-0 border-b-2 border-rose-500/80 z-20 pointer-events-none flex items-center" style="top: ${topPx}px;">
               <div class="w-2.5 h-2.5 rounded-full bg-rose-500 -ml-1 shadow-sm"></div>
             </div>
           `;
@@ -1712,13 +1898,12 @@
         const r = item.event;
         const topPx = ((timeToMinutes(r.startTime) - START_HOUR * 60) / 60) * 60;
         const heightPx = Math.max(30, ((timeToMinutes(r.endTime) - timeToMinutes(r.startTime)) / 60) * 60);
-
         const widthPct = 95 / item.totalColumns;
         const leftPct = 1.5 + (item.column * widthPct);
 
         html += `
           <div onclick="openDetailsModal('${r.id}')"
-               class="absolute rounded-lg p-1.5 md:p-2 border shadow-sm event-card bg-blue-600 text-white border-blue-700 cursor-pointer overflow-hidden"
+               class="absolute rounded-lg p-1.5 md:p-2 border shadow-sm event-card bg-blue-600 text-white border-blue-700 cursor-pointer overflow-hidden z-20"
                style="top: ${topPx}px; height: ${heightPx}px; left: ${leftPct}%; width: ${widthPct - 1}%;">
             <div class="flex justify-between items-center gap-1">
               <span class="font-bold text-[10px] md:text-xs truncate">${r.professor}</span>
@@ -1735,7 +1920,7 @@
 
     function computeOverlappingLayout(events) {
       if (!events || events.length === 0) return [];
-      const sorted = [...events].sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+      const sorted = [...events].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
       const results = [];
       const columns = [];
 
@@ -1743,6 +1928,7 @@
         const start = timeToMinutes(evt.startTime);
         const end = timeToMinutes(evt.endTime);
         let placed = false;
+
         for (let i = 0; i < columns.length; i++) {
           if (columns[i] <= start) {
             columns[i] = end;
@@ -1765,7 +1951,6 @@
       const base = new Date(STATE.currentDate.getFullYear(), STATE.currentDate.getMonth(), STATE.currentDate.getDate());
       const dayOfWeek = base.getDay();
       const distanceToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      
       const monday = new Date(base);
       monday.setDate(base.getDate() + distanceToMon);
 
@@ -1776,6 +1961,8 @@
         weekDates.push(d);
       }
 
+      const todayIso = formatDateIso(new Date());
+
       let html = `
         <div class="flex-1 flex flex-col h-full overflow-x-auto">
           <div class="min-w-[650px] flex-1 flex flex-col">
@@ -1783,36 +1970,32 @@
       `;
 
       weekDates.forEach(d => {
-        const isToday = formatDateIso(d) === formatDateIso(new Date());
+        const isToday = formatDateIso(d) === todayIso;
         html += `
           <div class="px-2 border-r border-slate-200 last:border-r-0 ${isToday ? 'text-blue-600 font-extrabold' : ''}">
             <div class="uppercase text-[10px] text-slate-400">${d.toLocaleDateString('pt-BR', { weekday: 'short' })}</div>
-            <div class="text-xs">${d.getDate()}/${d.getMonth()+1}</div>
+            <div class="text-xs">${d.getDate()}/${d.getMonth() + 1}</div>
           </div>
         `;
       });
 
-      html += `
-            </div>
-            <div class="flex-1 grid grid-cols-5 divide-x divide-slate-200 overflow-y-auto p-2 gap-2 bg-slate-100/50">
-      `;
+      html += `</div><div class="flex-1 grid grid-cols-5 divide-x divide-slate-200 overflow-y-auto p-2 gap-2 bg-slate-100/50">`;
 
       const emoji = STATE.deviceType === 'tablet' ? '📱' : '💻';
-
       weekDates.forEach(d => {
         const dateStr = formatDateIso(d);
+        const isPastDay = !STATE.isAdmin && dateStr < todayIso;
         let dayBookings = STATE.reservations.filter(r => r.date === dateStr);
 
         if (STATE.filterQuery) {
-          dayBookings = dayBookings.filter(r => 
+          dayBookings = dayBookings.filter(r =>
             r.professor.toLowerCase().includes(STATE.filterQuery) ||
             r.turma.toLowerCase().includes(STATE.filterQuery)
           );
         }
 
-        html += `<div class="space-y-2">`;
-
-        dayBookings.sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)).forEach(r => {
+        html += `<div class="space-y-2 ${isPastDay ? 'opacity-65' : ''}">`;
+        dayBookings.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)).forEach(r => {
           html += `
             <div onclick="openDetailsModal('${r.id}')" class="bg-white border border-slate-200 rounded-xl p-2 shadow-sm hover:shadow transition cursor-pointer space-y-1">
               <div class="flex justify-between items-center text-[10px] font-bold text-slate-500">
@@ -1825,12 +2008,14 @@
           `;
         });
 
-        html += `
+        if (!isPastDay) {
+          html += `
             <button onclick="openBookingModal(null, '${dateStr}')" class="w-full py-1.5 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-400 hover:border-blue-400 hover:text-blue-600 transition">
               + Agendar
             </button>
-          </div>
-        `;
+          `;
+        }
+        html += `</div>`;
       });
 
       html += `</div></div></div>`;
@@ -1840,25 +2025,27 @@
     function renderListView(container, dateStr) {
       let filtered = STATE.reservations.filter(r => r.date === dateStr);
       if (STATE.filterQuery) {
-        filtered = filtered.filter(r => 
+        filtered = filtered.filter(r =>
           r.professor.toLowerCase().includes(STATE.filterQuery) ||
           r.turma.toLowerCase().includes(STATE.filterQuery) ||
           r.sala.toLowerCase().includes(STATE.filterQuery)
         );
       }
 
-      filtered.sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+      filtered.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
       const emoji = STATE.deviceType === 'tablet' ? '📱' : '💻';
+      const isPastDay = !STATE.isAdmin && dateStr < formatDateIso(new Date());
 
       let html = `
         <div class="p-3 sm:p-6 max-w-4xl mx-auto w-full space-y-3">
           <div class="flex justify-between items-center">
             <h3 class="text-sm sm:text-base font-bold text-slate-800">Agendamentos (${filtered.length})</h3>
-            <button onclick="openBookingModal(null, '${dateStr}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs shadow hover:bg-blue-700 transition">
-              + Novo
-            </button>
+            ${!isPastDay ? `
+              <button onclick="openBookingModal(null, '${dateStr}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs shadow hover:bg-blue-700 transition">
+                + Novo
+              </button>
+            ` : `<span class="text-xs font-bold text-slate-400">Data encerrada</span>`}
           </div>
-
           <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs">
@@ -1880,7 +2067,7 @@
         filtered.forEach(r => {
           html += `
             <tr class="hover:bg-slate-50 transition">
-              <td class="py-2.5 px-3 font-bold text-slate-800 whitespace-nowrap">${r.startTime}-${r.endTime}</td>
+              <td class="py-2.5 px-3 font-bold text-slate-800 whitespace-nowrap">${r.startTime} - ${r.endTime}</td>
               <td class="py-2.5 px-3 font-bold text-blue-600">${r.professor}</td>
               <td class="py-2.5 px-3 text-slate-600">${r.sala} (${r.turma})</td>
               <td class="py-2.5 px-3 text-center font-black">
