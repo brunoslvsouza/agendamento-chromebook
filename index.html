@@ -592,14 +592,14 @@
         updateDeviceUI();
       }
 
-      // Atualiza o uso ao vivo, resumo vigente e a linha do tempo a cada 30 segundos
+      // Atualiza o uso ao vivo e a linha do tempo a cada 30 segundos
       setInterval(() => {
         updateLiveUsageStats();
-        updateSidebarStats(formatDateIso(STATE.currentDate));
         if (STATE.currentView === 'day' && formatDateIso(STATE.currentDate) === formatDateIso(new Date())) {
           renderDayGrid(document.getElementById('calendarContainer'), formatDateIso(STATE.currentDate));
         }
       }, 30000);
+    });
 
     function getCurrentStock() {
       return STATE.deviceType === 'tablet' ? STATE.totalStockTablet : STATE.totalStockChromebook;
@@ -1777,28 +1777,15 @@
     }
 
     function updateSidebarStats(dateStr) {
-      const now = new Date();
-      const todayIso = formatDateIso(now);
-      const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-      // Filtra as reservas do dia e mantém no cálculo de pico apenas o que está vigente (em andamento ou futuro)
       const dayBookings = STATE.reservations.filter(r => r.date === dateStr);
-      const activeOrFutureBookings = dayBookings.filter(r => {
-        if (dateStr < todayIso) return false; // Dias passados não possuem horário vigente
-        if (dateStr > todayIso) return true;  // Dias futuros são totalmente vigentes
-        return timeToMinutes(r.endTime) > nowMinutes; // Hoje: ignora reservas já encerradas
-      });
-
       document.getElementById('statReservations').innerText = dayBookings.length;
       let peak = 0;
 
-      // Calcula o pico minuto a minuto a partir do horário vigente
-      const startCheck = (dateStr === todayIso) ? Math.max(START_HOUR * 60, nowMinutes) : START_HOUR * 60;
-      for (let t = startCheck; t < END_HOUR * 60; t++) {
+      for (let h = START_HOUR * 60; h < END_HOUR * 60; h += 15) {
         let current = 0;
-        activeOrFutureBookings.forEach(r => {
-          if (t >= timeToMinutes(r.startTime) && t < timeToMinutes(r.endTime)) {
-            current += parseInt(r.quantity) || 0;
+        dayBookings.forEach(r => {
+          if (h >= timeToMinutes(r.startTime) && h < timeToMinutes(r.endTime)) {
+            current += parseInt(r.quantity);
           }
         });
         if (current > peak) peak = current;
@@ -1885,26 +1872,20 @@
       if (isToday) {
         const startMinutes = START_HOUR * 60;
         const endMinutes = END_HOUR * 60;
-        const exactMinutes = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
-        const currentTimeLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-        if (exactMinutes > startMinutes) {
-          const cappedMinutes = Math.min(exactMinutes, endMinutes);
+        if (nowMinutes > startMinutes) {
+          const cappedMinutes = Math.min(nowMinutes, endMinutes);
           const pastHeightPx = ((cappedMinutes - startMinutes) / 60) * 60;
           if (!STATE.isAdmin) {
             html += `
-              <div class="absolute left-0 right-0 top-0 past-slot pointer-events-none z-10" style="height: ${pastHeightPx}px;"></div>
+              <div class="absolute left-0 right-0 top-0 past-slot pointer-events-none z-10 border-b border-rose-300/60" style="height: ${pastHeightPx}px;"></div>
             `;
           }
         }
-        if (exactMinutes >= startMinutes && exactMinutes <= endMinutes) {
-          const topPx = ((exactMinutes - startMinutes) / 60) * 60;
+        if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+          const topPx = ((nowMinutes - startMinutes) / 60) * 60;
           html += `
-            <div class="absolute left-0 right-0 border-t-2 border-rose-500 z-30 pointer-events-none" style="top: ${topPx}px;">
-              <div class="relative flex items-center">
-                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 -ml-1.5 -mt-[5px] shadow-sm"></span>
-                <span class="ml-1 -mt-[5px] px-1.5 py-0.2 bg-rose-500 text-white text-[9px] font-mono font-bold rounded shadow-sm leading-tight">${currentTimeLabel}</span>
-              </div>
+            <div class="absolute left-0 right-0 border-b-2 border-rose-500/80 z-20 pointer-events-none flex items-center" style="top: ${topPx}px;">
+              <div class="w-2.5 h-2.5 rounded-full bg-rose-500 -ml-1 shadow-sm"></div>
             </div>
           `;
         }
