@@ -1918,20 +1918,32 @@
 
       eventsWithPos.forEach(item => {
         const r = item.event;
-        const topPx = ((timeToMinutes(r.startTime) - START_HOUR * 60) / 60) * 60;
-        const heightPx = Math.max(30, ((timeToMinutes(r.endTime) - timeToMinutes(r.startTime)) / 60) * 60);
+        const startMin = timeToMinutes(r.startTime);
+        const endMin = timeToMinutes(r.endTime);
+        const durationMin = Math.max(5, endMin - startMin);
+        const topPx = ((startMin - START_HOUR * 60) / 60) * 60;
+        const heightPx = (durationMin / 60) * 60;
+        const isCompact = heightPx < 34;
         const widthPct = 95 / item.totalColumns;
         const leftPct = 1.5 + (item.column * widthPct);
 
         html += `
           <div onclick="openDetailsModal('${r.id}')"
-               class="absolute rounded-lg p-1.5 md:p-2 border shadow-sm event-card bg-blue-600 text-white border-blue-700 cursor-pointer overflow-hidden z-20"
+               title="${r.professor} (${r.startTime}-${r.endTime} • ${r.sala})"
+               class="absolute rounded-md ${isCompact ? 'px-1.5 py-0 flex items-center' : 'p-1.5 md:p-2'} border shadow-sm event-card bg-blue-600 text-white border-blue-700 cursor-pointer overflow-hidden z-20 box-border"
                style="top: ${topPx}px; height: ${heightPx}px; left: ${leftPct}%; width: ${widthPct - 1}%;">
-            <div class="flex justify-between items-center gap-1">
-              <span class="font-bold text-[10px] md:text-xs truncate">${r.professor}</span>
-              <span class="bg-white text-slate-900 font-black text-[9px] md:text-[10px] px-1 rounded shrink-0">${emoji} ${r.quantity}</span>
-            </div>
-            <p class="text-[9px] md:text-[10px] text-white/90 truncate">${r.startTime}-${r.endTime} • ${r.sala}</p>
+            ${isCompact ? `
+              <div class="flex justify-between items-center gap-1 w-full leading-none">
+                <span class="font-bold text-[10px] truncate">${r.professor} <span class="font-normal text-white/85">(${r.startTime}-${r.endTime})</span></span>
+                <span class="bg-white text-slate-900 font-black text-[9px] px-1 rounded shrink-0">${emoji} ${r.quantity}</span>
+              </div>
+            ` : `
+              <div class="flex justify-between items-center gap-1">
+                <span class="font-bold text-[10px] md:text-xs truncate">${r.professor}</span>
+                <span class="bg-white text-slate-900 font-black text-[9px] md:text-[10px] px-1 rounded shrink-0">${emoji} ${r.quantity}</span>
+              </div>
+              <p class="text-[9px] md:text-[10px] text-white/90 truncate">${r.startTime}-${r.endTime} • ${r.sala}</p>
+            `}
           </div>
         `;
       });
