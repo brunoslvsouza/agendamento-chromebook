@@ -126,28 +126,7 @@
           <input type="date" id="miniDatePicker" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
-        <!-- RESUMO DO DIA (PICO) -->
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase text-slate-500">Resumo do Dia</span>
-            <i class="fa-solid fa-chart-pie text-blue-500"></i>
-          </div>
-          <div class="flex justify-between items-end">
-            <div>
-              <p class="text-2xl font-black text-slate-800" id="statReservations">0</p>
-              <p class="text-[10px] text-slate-500">Reservas hoje</p>
-            </div>
-            <div class="text-right">
-              <p class="text-2xl font-black text-blue-600" id="statPeakUsed">0/50</p>
-              <p class="text-[10px] text-slate-500">Pico em uso</p>
-            </div>
-          </div>
-          <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-            <div id="statProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <!-- NOVO: USO NO MOMENTO ATUAL (TEMPO REAL) -->
+        <!-- USO NO MOMENTO ATUAL (TEMPO REAL) -->
         <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold uppercase text-slate-500 flex items-center gap-1.5">
@@ -1328,6 +1307,20 @@
       const badge = document.getElementById('stockCheckBadge');
       const submitBtn = document.getElementById('btnSaveBooking');
 
+      if (!dateStr || !startStr || !endStr) {
+        badge.innerText = "Informe o horário";
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600";
+        return;
+      }
+
+      // Exceção para edição de agendamento já iniciado:
+      // Permite manter o horário de início original e validar o novo horário de término
+      const existingBooking = editId ? STATE.allReservations.find(r => r.id === editId) : null;
+      const isEditingOngoing = existingBooking &&
+        existingBooking.date === dateStr &&
+        existingBooking.startTime === startStr &&
+        !isPastDateTime(dateStr, endStr);
+
       if (!STATE.isAdmin && !isEditingOngoing && isPastDateTime(dateStr, startStr)) {
         badge.innerText = "Horário já passou";
         badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
@@ -1337,14 +1330,6 @@
 
       if (!STATE.isAdmin && isPastDateTime(dateStr, endStr)) {
         badge.innerText = "Término já passou";
-        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
-        submitBtn.disabled = true;
-        return;
-      }
-
-      // Bloqueia horários ou datas passadas (exceto se o Admin estiver editando um histórico antigo)
-      if (!STATE.isAdmin && isPastDateTime(dateStr, startStr)) {
-        badge.innerText = "Horário já passou";
         badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
         submitBtn.disabled = true;
         return;
@@ -1503,6 +1488,14 @@
 
     // SALVA RESERVAS PRESERVANDO OU ATUALIZANDO O PIN
     async function saveBooking() {
+      const editId = document.getElementById('inputEditId').value;
+      const baseDate = document.getElementById('inputDate').value;
+      const startTime = document.getElementById('inputStartTime').value;
+      const endTime = document.getElementById('inputEndTime').value;
+      const quantity = parseInt(document.getElementById('inputQty').value);
+      const recurrenceType = document.getElementById('inputRecurrenceType').value;
+      const recurrencePeriod = document.getElementById('inputRecurrenceCount').value;
+
       // Bloqueio final de segurança (com exceção para estender/alterar término de reserva já iniciada)
       const existingCheck = editId ? STATE.allReservations.find(r => r.id === editId) : null;
       const isEditingOngoing = existingCheck &&
@@ -1537,18 +1530,15 @@
       const pinRaw = document.getElementById('inputPin').value.trim();
 
       let pinHash = "";
-      let existingBooking = null;
+      let existingBooking = existingCheck;
 
       if (editId) {
-        existingBooking = STATE.allReservations.find(r => r.id === editId);
         if (pinRaw.length === 4) {
-          // Usuário informou um novo PIN: reescreve com o novo hash
           pinHash = await hashText(pinRaw);
         } else if (pinRaw.length > 0 && pinRaw.length < 4) {
           alert("Se desejar alterar o PIN, digite exatamente 4 números.");
           return;
         } else {
-          // Usuário deixou em branco: preserva o PIN original
           pinHash = existingBooking ? (existingBooking.pinHash || "") : "";
         }
       } else {
@@ -1767,7 +1757,6 @@
 
       if (releaseEl) {
         if (usedNow > 0) {
-          // Encontra também o horário mais próximo de liberação parcial
           const earliestEnd = activeBookings.reduce((min, r) =>
             timeToMinutes(r.endTime) < timeToMinutes(min) ? r.endTime : min, activeBookings[0].endTime
           );
@@ -1782,49 +1771,9 @@
       }
     }
 
-    function updateSidebarStats(dateStr) {
-      const now = new Date();
-      const todayIso = formatDateIso(now);
-      const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-      const dayBookings = STATE.reservations.filter(r => r.date === dateStr);
-      
-      // Mantém apenas reservas que ainda não terminaram (ou de dias futuros)
-      const validBookings = dayBookings.filter(r => {
-        if (dateStr < todayIso) return false;
-        if (dateStr > todayIso) return true;
-        return timeToMinutes(r.endTime) > nowMinutes;
-      });
-
-      document.getElementById('statReservations').innerText = validBookings.length;
-
-      let peak = 0;
-      const startMinute = (dateStr === todayIso) ? Math.max(START_HOUR * 60, nowMinutes) : START_HOUR * 60;
-
-      for (let t = startMinute; t < END_HOUR * 60; t++) {
-        let current = 0;
-        validBookings.forEach(r => {
-          if (t >= timeToMinutes(r.startTime) && t < timeToMinutes(r.endTime)) {
-            current += parseInt(r.quantity) || 0;
-          }
-        });
-        if (current > peak) peak = current;
-      }
-
-      const currentStock = getCurrentStock();
-      document.getElementById('statPeakUsed').innerText = `${peak}/${currentStock}`;
-      const pct = Math.min(100, Math.round((peak / currentStock) * 100));
-      const pBar = document.getElementById('statProgressBar');
-      pBar.style.width = `${pct}%`;
-      pBar.className = pct >= 100
-        ? "bg-rose-500 h-2 rounded-full transition-all"
-        : (pct > 50 ? "bg-amber-500 h-2 rounded-full transition-all" : "bg-blue-600 h-2 rounded-full transition-all");
-    }
-
     function renderCurrentView() {
       const container = document.getElementById('calendarContainer');
       const dateStr = formatDateIso(STATE.currentDate);
-      updateSidebarStats(dateStr);
       updateLiveUsageStats();
 
       if (STATE.currentView === 'day') renderDayGrid(container, dateStr);
@@ -1880,7 +1829,6 @@
             </div>
           `;
         } else {
-          // Se estiver na hora atual (ex: são 09:20 no bloco das 09:00), sugere o próximo horário válido (09:30)
           const targetClickTime = (isToday && slotStartMin < nowMinutes) ? getSmartDefaultTime(dateStr) : slotStartStr;
           html += `
             <div class="h-[60px] border-b border-slate-100 group cursor-pointer hover:bg-blue-50/30 transition"
