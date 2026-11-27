@@ -1328,9 +1328,17 @@
       const badge = document.getElementById('stockCheckBadge');
       const submitBtn = document.getElementById('btnSaveBooking');
 
-      if (!dateStr || !startStr || !endStr) {
-        badge.innerText = "Informe o horário";
-        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600";
+      if (!STATE.isAdmin && !isEditingOngoing && isPastDateTime(dateStr, startStr)) {
+        badge.innerText = "Horário já passou";
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        submitBtn.disabled = true;
+        return;
+      }
+
+      if (!STATE.isAdmin && isPastDateTime(dateStr, endStr)) {
+        badge.innerText = "Término já passou";
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        submitBtn.disabled = true;
         return;
       }
 
@@ -1495,16 +1503,14 @@
 
     // SALVA RESERVAS PRESERVANDO OU ATUALIZANDO O PIN
     async function saveBooking() {
-      const editId = document.getElementById('inputEditId').value;
-      const baseDate = document.getElementById('inputDate').value;
-      const startTime = document.getElementById('inputStartTime').value;
-      const endTime = document.getElementById('inputEndTime').value;
-      const quantity = parseInt(document.getElementById('inputQty').value);
-      const recurrenceType = document.getElementById('inputRecurrenceType').value;
-      const recurrencePeriod = document.getElementById('inputRecurrenceCount').value;
+      // Bloqueio final de segurança (com exceção para estender/alterar término de reserva já iniciada)
+      const existingCheck = editId ? STATE.allReservations.find(r => r.id === editId) : null;
+      const isEditingOngoing = existingCheck &&
+        existingCheck.date === baseDate &&
+        existingCheck.startTime === startTime &&
+        !isPastDateTime(baseDate, endTime);
 
-      // Bloqueio final de segurança para datas/horários anteriores
-      if (!STATE.isAdmin && isPastDateTime(baseDate, startTime)) {
+      if (!STATE.isAdmin && ((!isEditingOngoing && isPastDateTime(baseDate, startTime)) || isPastDateTime(baseDate, endTime))) {
         alert("Não é permitido criar ou mover agendamentos para datas ou horários anteriores ao momento atual.");
         return;
       }
