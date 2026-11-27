@@ -1884,24 +1884,30 @@
         }
       }
 
-      // FAIXA DESFOCADA EXATA ATÉ O MINUTO ATUAL + LINHA DE HORÁRIO ATUAL
+      // FAIXA DESFOCADA EXATA ATÉ O SEGUNDO ATUAL + LINHA DE HORÁRIO ATUAL ALINHADA
       if (isToday) {
         const startMinutes = START_HOUR * 60;
         const endMinutes = END_HOUR * 60;
-        if (nowMinutes > startMinutes) {
-          const cappedMinutes = Math.min(nowMinutes, endMinutes);
+        const exactMinutes = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
+        const currentTimeLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        if (exactMinutes > startMinutes) {
+          const cappedMinutes = Math.min(exactMinutes, endMinutes);
           const pastHeightPx = ((cappedMinutes - startMinutes) / 60) * 60;
           if (!STATE.isAdmin) {
             html += `
-              <div class="absolute left-0 right-0 top-0 past-slot pointer-events-none z-10 border-b border-rose-300/60" style="height: ${pastHeightPx}px;"></div>
+              <div class="absolute left-0 right-0 top-0 past-slot pointer-events-none z-10" style="height: ${pastHeightPx}px;"></div>
             `;
           }
         }
-        if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
-          const topPx = ((nowMinutes - startMinutes) / 60) * 60;
+        if (exactMinutes >= startMinutes && exactMinutes <= endMinutes) {
+          const topPx = ((exactMinutes - startMinutes) / 60) * 60;
           html += `
-            <div class="absolute left-0 right-0 border-b-2 border-rose-500/80 z-20 pointer-events-none flex items-center" style="top: ${topPx}px;">
-              <div class="w-2.5 h-2.5 rounded-full bg-rose-500 -ml-1 shadow-sm"></div>
+            <div class="absolute left-0 right-0 border-t-2 border-rose-500 z-30 pointer-events-none" style="top: ${topPx}px;">
+              <div class="relative flex items-center">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 -ml-1.5 -mt-[5px] shadow-sm"></span>
+                <span class="ml-1 -mt-[5px] px-1.5 py-0.2 bg-rose-500 text-white text-[9px] font-mono font-bold rounded shadow-sm leading-tight">${currentTimeLabel}</span>
+              </div>
             </div>
           `;
         }
