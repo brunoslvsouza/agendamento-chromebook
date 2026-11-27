@@ -5,11 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Agendamento de Chromebook</title>
   <link id="dynamicFavicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💻</text></svg>">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=CwKb4YR4CzK10SAd-uIthQAvV2dY30CFDm67L3n-FPSR_xYyJSwRjPKAlHT_8BMwehgjRysA6RC2VGd-syzAMw4yK5__2dvd4RQ_-nW4RUrT_MdrzDqFDpWnssPaXlrahIKBFIntAD1_SVGz3f_SGhIPh8-3a4GL3Fcoq5DOxN0dsi9eUJVAFmvjYg67QDUQ11CcsKWrOi0vQf_4ztDf1-AqtDbC4rbpF_ofpuq_zxLNUgXUDlO-u5f4B2hnNRpoH8knPnN3Kl3f9WaBGmRUg0YSQOqQzDhKaZAJpFTe3uFJmjYlzaMER_ppixpo-_-w" charset="UTF-8"></script><script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- SDKs do Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <!-- Bibliotecas para Exportação Excel (.xlsx) e PDF (.pdf) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <!-- ARQUIVO DE CONEXÃO SEPARADO DO FIREBASE -->
   <script src="firebase-config.js"></script>
   <style>
@@ -32,6 +36,39 @@
       );
       backdrop-filter: blur(1.5px);
       cursor: not-allowed !important;
+    }
+    /* Desfoque nos agendamentos que já passaram (igual ao da timeline) */
+    .past-event-card {
+      filter: blur(1.2px) saturate(0.45);
+      opacity: 0.6;
+    }
+    .past-event-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-color: rgba(241, 245, 249, 0.32);
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(203, 213, 225, 0.35),
+        rgba(203, 213, 225, 0.35) 6px,
+        transparent 6px,
+        transparent 12px
+      );
+      pointer-events: none;
+      border-radius: inherit;
+    }
+    .past-event-card:hover {
+      filter: blur(0px) saturate(0.85);
+      opacity: 0.92;
+    }
+    .past-row {
+      filter: blur(0.8px) saturate(0.5);
+      opacity: 0.62;
+      transition: all 0.2s ease-in-out;
+    }
+    .past-row:hover {
+      filter: blur(0px) saturate(1);
+      opacity: 1;
     }
   </style>
 </head>
@@ -88,9 +125,14 @@
 
     <!-- Controles da Visão e Ações -->
     <div class="flex items-center justify-between sm:justify-end space-x-2">
-      <button id="dbStatusBadge" onclick="openAdminModal()" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 transition hover:scale-105 shadow-sm" title="Clique para gerenciar a conexão">
-        <span id="dbStatusText"><i class="fa-solid fa-database"></i> Modo Local</span>
-      </button>
+      <!-- INDICADOR VISUAL DE CONEXÃO COM O BANCO (SEM BOTÃO) -->
+      <div id="dbStatusIndicator" class="flex items-center justify-center w-8 h-8 rounded-full bg-rose-50 border border-rose-200 shrink-0 select-none" title="Problema na conexão com o banco de dados (Modo Local)">
+        <!-- Ícone atualizado dinamicamente via JS -->
+        <svg class="w-5 h-5 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Sem conexão">
+          <path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3"></path>
+          <line x1="1" y1="1" x2="23" y2="23"></line>
+        </svg>
+      </div>
 
       <div class="bg-slate-100 p-1 rounded-xl flex space-x-1 border border-slate-200 w-full sm:w-auto justify-center">
         <button id="viewDay" class="flex-1 sm:flex-none px-3 py-1 text-xs font-semibold rounded-lg text-slate-600 transition">Dia</button>
@@ -343,7 +385,7 @@
 
   <!-- MODAL PAINEL ADMIN -->
   <div id="modalAdmin" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden p-3 sm:p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden border border-slate-100 flex flex-col max-h-[92vh]">
       <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-user-shield text-amber-400 text-lg"></i>
@@ -352,6 +394,7 @@
         <button id="btnCloseAdmin" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
+      <!-- LOGIN ADMIN (SEM DICA DE SENHA PADRÃO + ENTER PARA ENTRAR) -->
       <div id="adminAuthBox" class="p-8 text-center space-y-4">
         <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl">
           <i class="fa-solid fa-lock"></i>
@@ -360,41 +403,41 @@
           <h4 class="font-bold text-slate-800 text-base">Acesso Restrito</h4>
           <p class="text-xs text-slate-500">Digite a senha de administrador para gerenciar o sistema.</p>
         </div>
-        <div class="max-w-xs mx-auto space-y-2">
-          <input type="password" id="inputAdminPassword" placeholder="Senha do Admin" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm text-center font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
-          <button id="btnLoginAdmin" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition">Entrar no Painel</button>
-        </div>
-        <p class="text-[11px] text-slate-400 italic">Senha padrão inicial: <span class="font-bold text-slate-600">admin123</span></p>
+        <form id="formAdminLogin" class="max-w-xs mx-auto space-y-2">
+          <input type="password" id="inputAdminPassword" placeholder="Senha do Admin" autocomplete="current-password" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm text-center font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          <button type="submit" id="btnLoginAdmin" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition">Entrar no Painel</button>
+        </form>
       </div>
 
       <div id="adminContentBox" class="hidden flex-1 flex flex-col overflow-hidden">
-        <div class="flex border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 shrink-0">
-          <button id="tabAdminConfig" class="px-5 py-3 border-b-2 border-amber-500 text-amber-600 bg-white">Personalização & Configurações</button>
-          <button id="tabAdminList" class="px-5 py-3 border-b-2 border-transparent hover:text-slate-900">Gerenciar Reservas</button>
-          <button id="tabAdminFirebase" class="px-5 py-3 border-b-2 border-transparent hover:text-slate-900">Conexão Firebase</button>
+        <div class="flex border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 shrink-0 overflow-x-auto whitespace-nowrap">
+          <button id="tabAdminConfig" class="px-4 sm:px-5 py-3 border-b-2 border-amber-500 text-amber-600 bg-white">Personalização & Configurações</button>
+          <button id="tabAdminList" class="px-4 sm:px-5 py-3 border-b-2 border-transparent hover:text-slate-900">Gerenciar Reservas</button>
+          <button id="tabAdminHistory" class="px-4 sm:px-5 py-3 border-b-2 border-transparent hover:text-slate-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-line text-blue-600"></i> Histórico & Relatórios
+          </button>
+          <button id="tabAdminFirebase" class="px-4 sm:px-5 py-3 border-b-2 border-transparent hover:text-slate-900">Conexão Firebase</button>
         </div>
 
-        <div class="p-6 overflow-y-auto space-y-6 flex-1">
+        <div class="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
+          <!-- ABA 1: CONFIGURAÇÕES -->
           <div id="panelAdminConfig" class="space-y-5">
             <!-- PERSONALIZAÇÃO DE IMAGENS E TEXTOS DO SITE -->
             <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-200 space-y-3">
               <h5 class="font-bold text-xs text-blue-900 uppercase tracking-wider">Personalização do Site e Imagens</h5>
               <p class="text-xs text-slate-500">Faça upload da logo da escola e do favicon diretamente do seu dispositivo, e edite os textos do site.</p>
               <div class="space-y-3 text-xs">
-                <!-- Upload de Logo -->
                 <div class="space-y-1">
                   <label class="block font-bold text-slate-700">Logo da Escola (Upload de Imagem)</label>
                   <input type="file" id="inputAdminLogoFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
                   <p class="text-[10px] text-slate-400">Ou cole a URL direta de uma imagem na web:</p>
                   <input type="url" id="inputAdminLogoUrl" placeholder="https://exemplo.com/logo-escola.png" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono">
                 </div>
-                <!-- Upload de Favicon -->
                 <div class="space-y-1">
                   <label class="block font-bold text-slate-700">Ícone da Aba do Navegador - Favicon (Upload)</label>
                   <input type="file" id="inputAdminFaviconFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
                   <input type="url" id="inputAdminFaviconUrl" placeholder="https://exemplo.com/favicon.ico" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono mt-1">
                 </div>
-                <!-- Edição de Textos do Site -->
                 <div class="pt-2 border-t border-blue-200/60 space-y-2">
                   <h6 class="font-bold text-blue-900">Editar Textos e Nomes do Site</h6>
                   <div>
@@ -446,18 +489,18 @@
             </div>
           </div>
 
-          <!-- TABELA GERENCIAR RESERVAS DO ADMIN COM EXCLUSÃO EM MASSA E EDIÇÃO DIRETA -->
+          <!-- ABA 2: GERENCIAR RESERVAS ATIVAS -->
           <div id="panelAdminList" class="hidden space-y-3">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center flex-wrap gap-2">
               <div class="flex items-center gap-3">
-                <h5 class="font-bold text-xs text-slate-700 uppercase">Todas as Reservas Cadastradas</h5>
+                <h5 class="font-bold text-xs text-slate-700 uppercase">Reservas Ativas Cadastradas</h5>
                 <button id="btnAdminBatchDelete" onclick="adminBatchDeleteBookings()" class="hidden px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition shadow flex items-center gap-1.5">
                   <i class="fa-solid fa-trash-can"></i> Excluir Selecionados (<span id="selectedAdminCount">0</span>)
                 </button>
               </div>
               <span class="text-xs text-slate-500 font-semibold">Total: <span id="adminTotalBookingsCount">0</span></span>
             </div>
-            <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="border border-slate-200 rounded-xl overflow-x-auto">
               <table class="w-full text-left text-xs">
                 <thead class="bg-slate-100 border-b border-slate-200 font-bold text-slate-600">
                   <tr>
@@ -477,6 +520,112 @@
             </div>
           </div>
 
+          <!-- ABA 3: HISTÓRICO & RELATÓRIOS (INCLUI EXCLUÍDOS + ESTATÍSTICAS + EXPORTAÇÃO EXCEL/PDF) -->
+          <div id="panelAdminHistory" class="hidden space-y-5">
+            <!-- Barra de Filtros e Exportação -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-3">
+                  <div>
+                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Equipamento</label>
+                    <select id="historyFilterDevice" class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                      <option value="all">Todos os Equipamentos</option>
+                      <option value="chromebook">Apenas Chromebooks</option>
+                      <option value="tablet">Apenas Tablets</option>
+                    </select>
+                  </div>
+                  <div class="pt-4">
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none bg-white px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 transition">
+                      <input type="checkbox" id="historyIncludeDeleted" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                      <span class="text-xs font-bold text-slate-700">Incluir agendamentos excluídos</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Botões de Exportação -->
+                <div class="flex flex-wrap items-center gap-2 pt-2 md:pt-4">
+                  <button id="btnExportHistoryExcel" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                  </button>
+                  <button id="btnExportHistoryPdf" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-pdf"></i> Exportar PDF
+                  </button>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-info text-blue-500"></i>
+                <span>Marque ou desmarque <strong>"Incluir agendamentos excluídos"</strong> para controlar o que aparece nos indicadores e nos arquivos exportados (Excel e PDF).</span>
+              </p>
+            </div>
+
+            <!-- 4 Cards de Destaques / Estatísticas -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-1">
+                <div class="flex items-center justify-between text-blue-600">
+                  <span class="text-[10px] font-bold uppercase tracking-wider">Prof. que mais solicitou</span>
+                  <i class="fa-solid fa-chalkboard-user"></i>
+                </div>
+                <p id="histTopProf" class="text-sm font-black text-slate-800 truncate">---</p>
+                <p id="histTopProfSub" class="text-[11px] text-slate-500 font-medium">0 solicitações</p>
+              </div>
+
+              <div class="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5 space-y-1">
+                <div class="flex items-center justify-between text-indigo-600">
+                  <span class="text-[10px] font-bold uppercase tracking-wider">Turma mais solicitante</span>
+                  <i class="fa-solid fa-users"></i>
+                </div>
+                <p id="histTopTurma" class="text-sm font-black text-slate-800 truncate">---</p>
+                <p id="histTopTurmaSub" class="text-[11px] text-slate-500 font-medium">0 solicitações</p>
+              </div>
+
+              <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 space-y-1">
+                <div class="flex items-center justify-between text-amber-600">
+                  <span class="text-[10px] font-bold uppercase tracking-wider">Horário mais concorrido</span>
+                  <i class="fa-solid fa-clock"></i>
+                </div>
+                <p id="histTopHour" class="text-sm font-black text-slate-800 truncate">---</p>
+                <p id="histTopHourSub" class="text-[11px] text-slate-500 font-medium">0 agendamentos</p>
+              </div>
+
+              <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 space-y-1">
+                <div class="flex items-center justify-between text-emerald-600">
+                  <span class="text-[10px] font-bold uppercase tracking-wider">Dia mais concorrido</span>
+                  <i class="fa-solid fa-calendar-check"></i>
+                </div>
+                <p id="histTopDay" class="text-sm font-black text-slate-800 truncate">---</p>
+                <p id="histTopDaySub" class="text-[11px] text-slate-500 font-medium">---</p>
+              </div>
+            </div>
+
+            <!-- Tabela Completa do Histórico -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <h5 class="font-bold text-xs text-slate-700 uppercase">Registro Histórico Completo</h5>
+                <div class="flex items-center gap-3 text-[11px] font-semibold">
+                  <span class="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Ativos: <strong id="histCountActive">0</strong></span>
+                  <span class="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">Excluídos: <strong id="histCountDeleted">0</strong></span>
+                  <span class="text-slate-600">Exibindo: <strong id="histCountTotal">0</strong></span>
+                </div>
+              </div>
+              <div class="border border-slate-200 rounded-xl overflow-x-auto max-h-80 overflow-y-auto">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-slate-100 border-b border-slate-200 font-bold text-slate-600 sticky top-0 z-10">
+                    <tr>
+                      <th class="p-2.5">Status</th>
+                      <th class="p-2.5 text-center">Equip.</th>
+                      <th class="p-2.5">Data / Horário</th>
+                      <th class="p-2.5">Professor(a)</th>
+                      <th class="p-2.5">Sala / Turma</th>
+                      <th class="p-2.5 text-center">Qtd</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminHistoryTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ABA 4: FIREBASE -->
           <div id="panelAdminFirebase" class="hidden space-y-4">
             <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 text-xs text-amber-800 space-y-1">
               <p class="font-bold">Status da Conexão Firebase</p>
@@ -528,7 +677,7 @@
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join("");
     }
 
-    // Hash da senha inicial 'admin123'
+    // Hash da senha inicial
     const DEFAULT_ADMIN_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
 
     const STATE = {
@@ -544,6 +693,7 @@
       },
       isAdmin: false,
       allReservations: [],
+      deletedReservations: [],
       reservations: [],
       currentDate: new Date(),
       currentView: 'day',
@@ -555,9 +705,13 @@
     const START_HOUR = 7;
     const END_HOUR = 21;
     let dbRef = null;
+    let deletedRef = null;
     let settingsRef = null;
     let pendingCancelBookingId = null;
     let editingAdminBookingId = null;
+    let hasShownCloudToast = false;
+
+    const WEEKDAY_NAMES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
     document.addEventListener('DOMContentLoaded', () => {
       applyBranding(STATE.branding);
@@ -568,20 +722,30 @@
 
       if (!STATE.dbConnected) {
         STATE.allReservations = JSON.parse(localStorage.getItem('chromebook_reservations')) || [];
+        STATE.deletedReservations = JSON.parse(localStorage.getItem('chromebook_deleted_reservations')) || [];
         updateDeviceUI();
       }
 
-      // Atualiza o uso ao vivo e a linha do tempo a cada 30 segundos
+      // Atualiza o uso ao vivo, desfoque de eventos passados e a linha do tempo a cada 30 segundos
       setInterval(() => {
         updateLiveUsageStats();
-        if (STATE.currentView === 'day' && formatDateIso(STATE.currentDate) === formatDateIso(new Date())) {
-          renderDayGrid(document.getElementById('calendarContainer'), formatDateIso(STATE.currentDate));
+        if (formatDateIso(STATE.currentDate) === formatDateIso(new Date())) {
+          renderCurrentView();
         }
       }, 30000);
     });
 
     function getCurrentStock() {
       return STATE.deviceType === 'tablet' ? STATE.totalStockTablet : STATE.totalStockChromebook;
+    }
+
+    function isBookingPast(r) {
+      const now = new Date();
+      const todayIso = formatDateIso(now);
+      if (r.date < todayIso) return true;
+      if (r.date > todayIso) return false;
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      return timeToMinutes(r.endTime) <= nowMinutes;
     }
 
     function updateDeviceUI() {
@@ -673,7 +837,19 @@
             firebase.initializeApp(config);
           }
           dbRef = firebase.database().ref('reservations');
+          deletedRef = firebase.database().ref('deleted_reservations');
           settingsRef = firebase.database().ref('settings');
+
+          // Monitoramento real do estado de conexão com o Firebase
+          firebase.database().ref('.info/connected').on('value', (snap) => {
+            const isConnected = snap.val() === true;
+            STATE.dbConnected = isConnected;
+            updateStatusBadge(isConnected);
+            if (isConnected && !hasShownCloudToast) {
+              hasShownCloudToast = true;
+              showToast("Banco de dados conectado! Sincronização em tempo real ativa.");
+            }
+          });
 
           dbRef.on('value', (snapshot) => {
             const data = snapshot.val();
@@ -682,14 +858,23 @@
             } else {
               STATE.allReservations = [];
             }
-
-            if (!STATE.dbConnected) {
-              STATE.dbConnected = true;
-              showToast("Nuvem Conectada! Sincronização em tempo real ativa.");
-            }
-            updateStatusBadge(true);
             updateDeviceUI();
-            if (STATE.isAdmin) renderAdminBookingsTable();
+            if (STATE.isAdmin) {
+              renderAdminBookingsTable();
+              renderAdminHistoryPanel();
+            }
+          });
+
+          deletedRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+              STATE.deletedReservations = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+            } else {
+              STATE.deletedReservations = [];
+            }
+            if (STATE.isAdmin) {
+              renderAdminHistoryPanel();
+            }
           });
 
           settingsRef.on('value', (snapshot) => {
@@ -718,26 +903,43 @@
           });
         } catch (e) {
           console.error("Erro no Firebase:", e);
+          STATE.dbConnected = false;
           updateStatusBadge(false);
         }
       } else {
+        STATE.dbConnected = false;
         updateStatusBadge(false);
       }
     }
 
+    // ATUALIZA O INDICADOR VISUAL (NUVEM VERDE = OK / NUVEM CORTADA VERMELHA = ERRO)
     function updateStatusBadge(connected) {
-      const badge = document.getElementById('dbStatusBadge');
-      const text = document.getElementById('dbStatusText');
+      const indicator = document.getElementById('dbStatusIndicator');
       const adminStatus = document.getElementById('adminFbStatusText');
 
       if (connected) {
-        badge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm cursor-pointer hover:scale-105 transition";
-        text.innerHTML = `<i class="fa-solid fa-cloud text-emerald-600"></i> Nuvem Conectada`;
+        if (indicator) {
+          indicator.className = "flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200 shrink-0 select-none";
+          indicator.title = "Banco de dados conectado (Tudo OK)";
+          indicator.innerHTML = `
+            <svg class="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="currentColor" aria-label="Banco conectado">
+              <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/>
+            </svg>
+          `;
+        }
         if (adminStatus) adminStatus.innerText = "O sistema está perfeitamente conectado e sincronizando em tempo real com o Firebase!";
       } else {
-        badge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 cursor-pointer hover:scale-105 transition";
-        text.innerHTML = `<i class="fa-solid fa-database text-amber-600"></i> Modo Local (Sem Nuvem)`;
-        if (adminStatus) adminStatus.innerText = "O sistema está no Modo Local. Crie o arquivo firebase-config.js com suas chaves para ativar a nuvem.";
+        if (indicator) {
+          indicator.className = "flex items-center justify-center w-8 h-8 rounded-full bg-rose-50 border border-rose-200 shrink-0 select-none";
+          indicator.title = "Problema na conexão com o banco de dados (Modo Local)";
+          indicator.innerHTML = `
+            <svg class="w-5 h-5 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Erro de conexão">
+              <path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          `;
+        }
+        if (adminStatus) adminStatus.innerText = "O sistema está sem conexão com o Firebase (Modo Local). Verifique o arquivo firebase-config.js ou a internet.";
       }
     }
 
@@ -824,14 +1026,24 @@
         renderCurrentView();
       });
 
-      // MODAL PAINEL ADMIN
+      // MODAL PAINEL ADMIN (SUPORTE À TECLA ENTER VIA FORM SUBMIT)
       document.getElementById('btnOpenAdmin').addEventListener('click', openAdminModal);
       document.getElementById('btnCloseAdmin').addEventListener('click', closeAdminModal);
-      document.getElementById('btnLoginAdmin').addEventListener('click', performAdminLogin);
+      document.getElementById('formAdminLogin').addEventListener('submit', (e) => {
+        e.preventDefault();
+        performAdminLogin();
+      });
       document.getElementById('btnLogoutAdmin').addEventListener('click', performAdminLogout);
       document.getElementById('tabAdminConfig').addEventListener('click', () => switchAdminTab('config'));
       document.getElementById('tabAdminList').addEventListener('click', () => switchAdminTab('list'));
+      document.getElementById('tabAdminHistory').addEventListener('click', () => switchAdminTab('history'));
       document.getElementById('tabAdminFirebase').addEventListener('click', () => switchAdminTab('firebase'));
+
+      // Filtros e exportação da aba Histórico & Relatórios
+      document.getElementById('historyFilterDevice').addEventListener('change', renderAdminHistoryPanel);
+      document.getElementById('historyIncludeDeleted').addEventListener('change', renderAdminHistoryPanel);
+      document.getElementById('btnExportHistoryExcel').addEventListener('click', exportHistoryToExcel);
+      document.getElementById('btnExportHistoryPdf').addEventListener('click', exportHistoryToPdf);
 
       // SALVAR BRANDING
       document.getElementById('btnSaveAdminBranding').addEventListener('click', async () => {
@@ -939,7 +1151,10 @@
           deleteBookingData(pendingCancelBookingId, 'single');
           closeCancelModal();
           closeDetailsModal();
-          if (STATE.isAdmin) renderAdminBookingsTable();
+          if (STATE.isAdmin) {
+            renderAdminBookingsTable();
+            renderAdminHistoryPanel();
+          }
         }
       });
 
@@ -948,7 +1163,10 @@
           deleteBookingData(pendingCancelBookingId, 'future');
           closeCancelModal();
           closeDetailsModal();
-          if (STATE.isAdmin) renderAdminBookingsTable();
+          if (STATE.isAdmin) {
+            renderAdminBookingsTable();
+            renderAdminHistoryPanel();
+          }
         }
       });
 
@@ -1014,6 +1232,10 @@
       } else {
         document.getElementById('adminAuthBox').classList.remove('hidden');
         document.getElementById('adminContentBox').classList.add('hidden');
+        setTimeout(() => {
+          const pwdInput = document.getElementById('inputAdminPassword');
+          if (pwdInput) pwdInput.focus();
+        }, 50);
       }
     }
 
@@ -1031,6 +1253,11 @@
         document.getElementById('inputAdminPassword').value = "";
       } else {
         alert("Senha de Admin incorreta!");
+        const pwdInput = document.getElementById('inputAdminPassword');
+        if (pwdInput) {
+          pwdInput.select();
+          pwdInput.focus();
+        }
       }
     }
 
@@ -1059,22 +1286,407 @@
       document.getElementById('fbProjectId').value = fb.projectId || "";
       updateStatusBadge(STATE.dbConnected);
       renderAdminBookingsTable();
+      renderAdminHistoryPanel();
     }
 
     function switchAdminTab(tabName) {
-      const tabs = ['config', 'list', 'firebase'];
+      const tabs = ['config', 'list', 'history', 'firebase'];
       tabs.forEach(t => {
-        const btn = document.getElementById('tabAdmin' + t.charAt(0).toUpperCase() + t.slice(1));
-        const panel = document.getElementById('panelAdmin' + t.charAt(0).toUpperCase() + t.slice(1));
+        const cap = t.charAt(0).toUpperCase() + t.slice(1);
+        const btn = document.getElementById('tabAdmin' + cap);
+        const panel = document.getElementById('panelAdmin' + cap);
+        if (!btn || !panel) return;
+        const extraFlex = (t === 'history') ? ' flex items-center gap-1.5' : '';
         if (t === tabName) {
-          btn.className = "px-5 py-3 border-b-2 border-amber-500 text-amber-600 bg-white";
+          btn.className = `px-4 sm:px-5 py-3 border-b-2 border-amber-500 text-amber-600 bg-white${extraFlex}`;
           panel.classList.remove('hidden');
         } else {
-          btn.className = "px-5 py-3 border-b-2 border-transparent hover:text-slate-900";
+          btn.className = `px-4 sm:px-5 py-3 border-b-2 border-transparent hover:text-slate-900${extraFlex}`;
           panel.classList.add('hidden');
         }
       });
       if (tabName === 'list') renderAdminBookingsTable();
+      if (tabName === 'history') renderAdminHistoryPanel();
+    }
+
+    // =========================================================================
+    // HISTÓRICO, ESTATÍSTICAS E EXPORTAÇÃO (EXCEL E PDF)
+    // =========================================================================
+    function getCombinedHistory(includeDeleted = true, deviceFilter = 'all') {
+      const activeList = STATE.allReservations.map(r => ({
+        ...r,
+        isDeleted: false,
+        statusLabel: 'Ativo'
+      }));
+      const deletedList = includeDeleted
+        ? STATE.deletedReservations.map(r => ({
+            ...r,
+            isDeleted: true,
+            statusLabel: 'Excluído'
+          }))
+        : [];
+
+      const seen = new Set();
+      const combined = [];
+      [...activeList, ...deletedList].forEach(item => {
+        const key = `${item.id}_${item.isDeleted ? 'del' : 'act'}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          const itemDevice = item.deviceType || 'chromebook';
+          if (deviceFilter === 'all' || itemDevice === deviceFilter) {
+            combined.push(item);
+          }
+        }
+      });
+
+      combined.sort((a, b) => {
+        const dCmp = (b.date || '').localeCompare(a.date || '');
+        if (dCmp !== 0) return dCmp;
+        return (b.startTime || '').localeCompare(a.startTime || '');
+      });
+      return combined;
+    }
+
+    function computeHistoryStats(records) {
+      if (!records || records.length === 0) {
+        return {
+          topProf: { name: 'Sem registros', count: 0, devices: 0 },
+          topTurma: { name: 'Sem registros', count: 0, devices: 0 },
+          topHour: { label: 'Sem registros', count: 0 },
+          topWeekday: { name: 'Sem registros', count: 0 },
+          topDate: { dateStr: '---', count: 0 },
+          profRanking: [],
+          turmaRanking: []
+        };
+      }
+
+      const profMap = {};
+      const turmaMap = {};
+      const hourMap = {};
+      const weekdayMap = {};
+      const dateMap = {};
+
+      records.forEach(r => {
+        const qty = parseInt(r.quantity) || 0;
+
+        // Professor (agrupamento sem diferenciar maiúsculas/minúsculas)
+        const profRaw = (r.professor || 'Não informado').trim();
+        const profKey = profRaw.toLowerCase();
+        if (!profMap[profKey]) profMap[profKey] = { name: profRaw, count: 0, devices: 0 };
+        profMap[profKey].count += 1;
+        profMap[profKey].devices += qty;
+
+        // Turma
+        const turmaRaw = (r.turma || 'Não informada').trim();
+        const turmaKey = turmaRaw.toLowerCase();
+        if (!turmaMap[turmaKey]) turmaMap[turmaKey] = { name: turmaRaw, count: 0, devices: 0 };
+        turmaMap[turmaKey].count += 1;
+        turmaMap[turmaKey].devices += qty;
+
+        // Faixa horária mais concorrida (hora a hora)
+        const sMin = timeToMinutes(r.startTime);
+        const eMin = timeToMinutes(r.endTime);
+        const startH = Math.floor(sMin / 60);
+        const endH = Math.max(startH, Math.ceil(eMin / 60) - 1);
+        for (let h = startH; h <= endH; h++) {
+          const label = `${String(h).padStart(2, '0')}:00 - ${String(h + 1).padStart(2, '0')}:00`;
+          if (!hourMap[label]) hourMap[label] = { label, count: 0, devices: 0 };
+          hourMap[label].count += 1;
+          hourMap[label].devices += qty;
+        }
+
+        // Dia da semana e data específica
+        if (r.date) {
+          const dObj = new Date(r.date + 'T00:00:00');
+          if (!isNaN(dObj.getTime())) {
+            const wName = WEEKDAY_NAMES[dObj.getDay()];
+            if (!weekdayMap[wName]) weekdayMap[wName] = { name: wName, count: 0 };
+            weekdayMap[wName].count += 1;
+          }
+          if (!dateMap[r.date]) dateMap[r.date] = { dateStr: r.date, count: 0 };
+          dateMap[r.date].count += 1;
+        }
+      });
+
+      const profRanking = Object.values(profMap).sort((a, b) => b.count - a.count || b.devices - a.devices);
+      const turmaRanking = Object.values(turmaMap).sort((a, b) => b.count - a.count || b.devices - a.devices);
+      const hourRanking = Object.values(hourMap).sort((a, b) => b.count - a.count || b.devices - a.devices);
+      const weekdayRanking = Object.values(weekdayMap).sort((a, b) => b.count - a.count);
+      const dateRanking = Object.values(dateMap).sort((a, b) => b.count - a.count);
+
+      return {
+        topProf: profRanking[0] || { name: '---', count: 0, devices: 0 },
+        topTurma: turmaRanking[0] || { name: '---', count: 0, devices: 0 },
+        topHour: hourRanking[0] || { label: '---', count: 0 },
+        topWeekday: weekdayRanking[0] || { name: '---', count: 0 },
+        topDate: dateRanking[0] || { dateStr: '---', count: 0 },
+        profRanking,
+        turmaRanking
+      };
+    }
+
+    function formatDateBR(isoDate) {
+      if (!isoDate) return '---';
+      const parts = isoDate.split('-');
+      if (parts.length !== 3) return isoDate;
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function formatDateTimeBR(isoTimestamp) {
+      if (!isoTimestamp) return '';
+      const d = new Date(isoTimestamp);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderAdminHistoryPanel() {
+      const deviceFilterEl = document.getElementById('historyFilterDevice');
+      const includeDeletedEl = document.getElementById('historyIncludeDeleted');
+      if (!deviceFilterEl || !includeDeletedEl) return;
+
+      const deviceFilter = deviceFilterEl.value;
+      const includeDeleted = includeDeletedEl.checked;
+      const records = getCombinedHistory(includeDeleted, deviceFilter);
+      const stats = computeHistoryStats(records);
+
+      // Atualiza os 4 Cards
+      document.getElementById('histTopProf').innerText = stats.topProf.name;
+      document.getElementById('histTopProfSub').innerText = stats.topProf.count > 0
+        ? `${stats.topProf.count} reserva(s) • ${stats.topProf.devices} aparelhos`
+        : 'Nenhuma solicitação';
+
+      document.getElementById('histTopTurma').innerText = stats.topTurma.name;
+      document.getElementById('histTopTurmaSub').innerText = stats.topTurma.count > 0
+        ? `${stats.topTurma.count} reserva(s) • ${stats.topTurma.devices} aparelhos`
+        : 'Nenhuma solicitação';
+
+      document.getElementById('histTopHour').innerText = stats.topHour.label;
+      document.getElementById('histTopHourSub').innerText = stats.topHour.count > 0
+        ? `${stats.topHour.count} agendamento(s) nessa faixa`
+        : 'Sem registros';
+
+      document.getElementById('histTopDay').innerText = stats.topWeekday.name;
+      document.getElementById('histTopDaySub').innerText = stats.topWeekday.count > 0
+        ? `${stats.topWeekday.count}x • Pico: ${formatDateBR(stats.topDate.dateStr)} (${stats.topDate.count})`
+        : 'Sem registros';
+
+      // Contadores
+      const activeCount = records.filter(r => !r.isDeleted).length;
+      const deletedCount = records.filter(r => r.isDeleted).length;
+      document.getElementById('histCountActive').innerText = activeCount;
+      document.getElementById('histCountDeleted').innerText = deletedCount;
+      document.getElementById('histCountTotal').innerText = records.length;
+
+      // Tabela
+      const tbody = document.getElementById('adminHistoryTableBody');
+      tbody.innerHTML = "";
+      if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">Nenhum registro encontrado para os filtros selecionados.</td></tr>`;
+        return;
+      }
+
+      records.forEach(r => {
+        const isTablet = (r.deviceType || 'chromebook') === 'tablet';
+        const emoji = isTablet ? '📱' : '💻';
+        const statusBadge = r.isDeleted
+          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700" title="Excluído em ${formatDateTimeBR(r.deletedAt)}"><i class="fa-solid fa-trash-can text-[9px]"></i> Excluído</span>`
+          : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700"><i class="fa-solid fa-check text-[9px]"></i> Ativo</span>`;
+
+        const tr = document.createElement('tr');
+        tr.className = r.isDeleted ? "bg-rose-50/30 hover:bg-rose-50/60 transition" : "hover:bg-slate-50 transition";
+        tr.innerHTML = `
+          <td class="p-2.5 whitespace-nowrap">${statusBadge}</td>
+          <td class="p-2.5 text-center text-sm" title="${isTablet ? 'Tablet' : 'Chromebook'}">${emoji}</td>
+          <td class="p-2.5 font-bold text-slate-800 whitespace-nowrap">${formatDateBR(r.date)}<br><span class="text-slate-500 font-normal">${r.startTime} - ${r.endTime}</span></td>
+          <td class="p-2.5 font-bold ${r.isDeleted ? 'text-slate-500 line-through' : 'text-blue-600'}">${r.professor}</td>
+          <td class="p-2.5 text-slate-600">${r.sala} (${r.turma})</td>
+          <td class="p-2.5 text-center font-black text-slate-700">${r.quantity}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportHistoryToExcel() {
+      const deviceFilter = document.getElementById('historyFilterDevice').value;
+      const includeDeleted = document.getElementById('historyIncludeDeleted').checked;
+      const records = getCombinedHistory(includeDeleted, deviceFilter);
+
+      if (records.length === 0) {
+        showToast("Não há registros para exportar.", false);
+        return;
+      }
+
+      const stats = computeHistoryStats(records);
+      const todayStamp = formatDateIso(new Date());
+      const suffix = includeDeleted ? 'completo_com_excluidos' : 'somente_ativos';
+
+      const rowsData = records.map(r => {
+        const dObj = r.date ? new Date(r.date + 'T00:00:00') : null;
+        const weekday = (dObj && !isNaN(dObj.getTime())) ? WEEKDAY_NAMES[dObj.getDay()] : '';
+        return {
+          'Status': r.statusLabel,
+          'Equipamento': (r.deviceType || 'chromebook') === 'tablet' ? 'Tablet' : 'Chromebook',
+          'Data': formatDateBR(r.date),
+          'Dia da Semana': weekday,
+          'Início': r.startTime || '',
+          'Término': r.endTime || '',
+          'Professor(a)': r.professor || '',
+          'Sala': r.sala || '',
+          'Turma': r.turma || '',
+          'Quantidade': parseInt(r.quantity) || 0,
+          'Excluído em': r.isDeleted ? formatDateTimeBR(r.deletedAt) : ''
+        };
+      });
+
+      if (typeof XLSX !== 'undefined') {
+        const wb = XLSX.utils.book_new();
+
+        // Aba 1: Resumo Estatístico
+        const summaryRows = [
+          ['Relatório de Histórico de Agendamentos', STATE.branding.schoolTitle || 'Agendamento Escolar'],
+          ['Gerado em', new Date().toLocaleString('pt-BR')],
+          ['Filtro de Equipamento', deviceFilter === 'all' ? 'Todos' : (deviceFilter === 'tablet' ? 'Tablets' : 'Chromebooks')],
+          ['Inclui Agendamentos Excluídos?', includeDeleted ? 'Sim' : 'Não'],
+          ['Total de Registros Exportados', records.length],
+          ['Agendamentos Ativos', records.filter(r => !r.isDeleted).length],
+          ['Agendamentos Excluídos', records.filter(r => r.isDeleted).length],
+          [],
+          ['INDICADORES PRINCIPAIS', 'DESTAQUE', 'DETALHES'],
+          ['Professor(a) que mais solicitou', stats.topProf.name, `${stats.topProf.count} reserva(s) / ${stats.topProf.devices} aparelhos`],
+          ['Turma que mais solicitou', stats.topTurma.name, `${stats.topTurma.count} reserva(s) / ${stats.topTurma.devices} aparelhos`],
+          ['Horário mais concorrido', stats.topHour.label, `${stats.topHour.count} agendamento(s)`],
+          ['Dia da semana mais concorrido', stats.topWeekday.name, `${stats.topWeekday.count} agendamento(s)`],
+          ['Data com maior pico', formatDateBR(stats.topDate.dateStr), `${stats.topDate.count} agendamento(s)`]
+        ];
+        const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+        wsSummary['!cols'] = [{ wch: 32 }, { wch: 30 }, { wch: 35 }];
+        XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo Estatístico');
+
+        // Aba 2: Histórico Detalhado
+        const wsData = XLSX.utils.json_to_sheet(rowsData);
+        wsData['!cols'] = [
+          { wch: 11 }, { wch: 13 }, { wch: 12 }, { wch: 15 },
+          { wch: 8 }, { wch: 8 }, { wch: 28 }, { wch: 14 },
+          { wch: 16 }, { wch: 11 }, { wch: 18 }
+        ];
+        XLSX.utils.book_append_sheet(wb, wsData, 'Histórico');
+
+        XLSX.writeFile(wb, `historico_agendamentos_${suffix}_${todayStamp}.xlsx`);
+        showToast("Relatório Excel (.xlsx) exportado com sucesso!");
+      } else {
+        // Fallback CSV UTF-8 caso biblioteca offline
+        const headers = Object.keys(rowsData[0]);
+        const csvLines = [
+          headers.join(';'),
+          ...rowsData.map(row => headers.map(h => `"${String(row[h]).replace(/"/g, '""')}"`).join(';'))
+        ];
+        const blob = new Blob(["\uFEFF" + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `historico_agendamentos_${suffix}_${todayStamp}.csv`;
+        link.click();
+        showToast("Relatório CSV (Excel) exportado com sucesso!");
+      }
+    }
+
+    function exportHistoryToPdf() {
+      const deviceFilter = document.getElementById('historyFilterDevice').value;
+      const includeDeleted = document.getElementById('historyIncludeDeleted').checked;
+      const records = getCombinedHistory(includeDeleted, deviceFilter);
+
+      if (records.length === 0) {
+        showToast("Não há registros para exportar.", false);
+        return;
+      }
+
+      const stats = computeHistoryStats(records);
+      const todayStamp = formatDateIso(new Date());
+      const suffix = includeDeleted ? 'completo_com_excluidos' : 'somente_ativos';
+
+      if (window.jspdf && window.jspdf.jsPDF) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+        // Cabeçalho
+        doc.setFillColor(15, 23, 42);
+        doc.rect(0, 0, 297, 24, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text(`Relatório Histórico de Agendamentos - ${STATE.branding.schoolTitle || 'Bento Benedini'}`, 14, 11);
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        const filterLabel = deviceFilter === 'all' ? 'Todos os Equipamentos' : (deviceFilter === 'tablet' ? 'Tablets' : 'Chromebooks');
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}  |  Equipamento: ${filterLabel}  |  Inclui excluídos: ${includeDeleted ? 'Sim' : 'Não'}`, 14, 18);
+
+        // Caixas de KPIs
+        const kpis = [
+          { title: 'PROFESSOR(A) TOP', value: stats.topProf.name, sub: `${stats.topProf.count} reserva(s) (${stats.topProf.devices} un.)` },
+          { title: 'TURMA TOP', value: stats.topTurma.name, sub: `${stats.topTurma.count} reserva(s) (${stats.topTurma.devices} un.)` },
+          { title: 'HORÁRIO MAIS CONCORRIDO', value: stats.topHour.label, sub: `${stats.topHour.count} agendamento(s)` },
+          { title: 'DIA MAIS CONCORRIDO', value: stats.topWeekday.name, sub: `${stats.topWeekday.count}x (Pico: ${formatDateBR(stats.topDate.dateStr)})` }
+        ];
+
+        kpis.forEach((k, idx) => {
+          const x = 14 + idx * 68.5;
+          doc.setFillColor(248, 250, 252);
+          doc.setDrawColor(203, 213, 225);
+          doc.roundedRect(x, 30, 65, 20, 2, 2, 'FD');
+          doc.setTextColor(100, 116, 139);
+          doc.setFontSize(7);
+          doc.setFont(undefined, 'bold');
+          doc.text(k.title, x + 3, 35.5);
+          doc.setTextColor(15, 23, 42);
+          doc.setFontSize(10);
+          doc.text(doc.splitTextToSize(String(k.value), 59)[0], x + 3, 41.5);
+          doc.setTextColor(71, 85, 105);
+          doc.setFontSize(7.5);
+          doc.setFont(undefined, 'normal');
+          doc.text(doc.splitTextToSize(String(k.sub), 59)[0], x + 3, 47);
+        });
+
+        // Tabela
+        const tableBody = records.map(r => {
+          const dObj = r.date ? new Date(r.date + 'T00:00:00') : null;
+          const weekday = (dObj && !isNaN(dObj.getTime())) ? WEEKDAY_NAMES[dObj.getDay()] : '';
+          return [
+            r.statusLabel,
+            (r.deviceType || 'chromebook') === 'tablet' ? 'Tablet' : 'Chromebook',
+            formatDateBR(r.date),
+            weekday,
+            `${r.startTime} - ${r.endTime}`,
+            r.professor || '',
+            r.sala || '',
+            r.turma || '',
+            String(r.quantity || 0)
+          ];
+        });
+
+        doc.autoTable({
+          startY: 56,
+          head: [['Status', 'Equipamento', 'Data', 'Dia da Semana', 'Horário', 'Professor(a)', 'Sala', 'Turma', 'Qtd']],
+          body: tableBody,
+          styles: { fontSize: 8, cellPadding: 2.5 },
+          headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          didParseCell: function(data) {
+            if (data.section === 'body' && data.column.index === 0) {
+              if (data.cell.raw === 'Excluído') {
+                data.cell.styles.textColor = [190, 18, 60];
+                data.cell.styles.fontStyle = 'bold';
+              } else {
+                data.cell.styles.textColor = [4, 120, 87];
+                data.cell.styles.fontStyle = 'bold';
+              }
+            }
+          }
+        });
+
+        doc.save(`historico_agendamentos_${suffix}_${todayStamp}.pdf`);
+        showToast("Relatório PDF exportado com sucesso!");
+      } else {
+        window.print();
+      }
     }
 
     function renderAdminBookingsTable() {
@@ -1128,7 +1740,7 @@
               <input type="checkbox" value="${r.id}" onchange="updateAdminBatchDeleteBtn()" class="admin-booking-checkbox rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
             </td>
             <td class="p-2.5 font-bold text-center text-sm">${deviceEmoji}</td>
-            <td class="p-2.5 font-bold text-slate-800">${r.date}<br><span class="text-slate-500 font-normal">${r.startTime}-${r.endTime}</span></td>
+            <td class="p-2.5 font-bold text-slate-800">${formatDateBR(r.date)}<br><span class="text-slate-500 font-normal">${r.startTime}-${r.endTime}</span></td>
             <td class="p-2.5 font-bold text-blue-600">${r.professor}</td>
             <td class="p-2.5 text-slate-600">${r.sala} (${r.turma})</td>
             <td class="p-2.5 text-center font-black">${r.quantity}</td>
@@ -1170,25 +1782,50 @@
       }
     }
 
+    function archiveDeletedBookings(bookingsToArchive) {
+      const nowIso = new Date().toISOString();
+      bookingsToArchive.forEach(b => {
+        const archived = {
+          ...b,
+          deletedAt: nowIso,
+          deletedBy: STATE.isAdmin ? 'Admin' : 'Usuário'
+        };
+        if (STATE.dbConnected && deletedRef) {
+          deletedRef.child(b.id).set(archived);
+        } else {
+          const existsIdx = STATE.deletedReservations.findIndex(d => d.id === b.id);
+          if (existsIdx !== -1) STATE.deletedReservations[existsIdx] = archived;
+          else STATE.deletedReservations.push(archived);
+        }
+      });
+      if (!STATE.dbConnected) {
+        localStorage.setItem('chromebook_deleted_reservations', JSON.stringify(STATE.deletedReservations));
+      }
+    }
+
     function adminBatchDeleteBookings() {
       const selected = document.querySelectorAll('.admin-booking-checkbox:checked');
       const ids = Array.from(selected).map(cb => cb.value);
       if (ids.length === 0) return;
 
-      if (confirm(`Tem certeza que deseja excluir os ${ids.length} agendamentos selecionados de uma só vez?`)) {
+      if (confirm(`Tem certeza que deseja excluir os ${ids.length} agendamentos selecionados de uma só vez? (Eles continuarão salvos no Histórico)`)) {
+        const toArchive = STATE.allReservations.filter(r => ids.includes(r.id));
+        archiveDeletedBookings(toArchive);
+
         if (STATE.dbConnected && dbRef) {
           ids.forEach(id => dbRef.child(id).remove());
-          showToast(`${ids.length} agendamentos excluídos na nuvem!`);
+          showToast(`${ids.length} agendamentos excluídos e movidos para o histórico!`);
         } else {
           STATE.allReservations = STATE.allReservations.filter(r => !ids.includes(r.id));
           localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
-          showToast(`${ids.length} agendamentos excluídos localmente!`, false);
+          showToast(`${ids.length} agendamentos excluídos e salvos no histórico local!`, false);
           updateDeviceUI();
         }
         const master = document.getElementById('selectAllAdminBookings');
         if (master) master.checked = false;
         updateAdminBatchDeleteBtn();
         renderAdminBookingsTable();
+        renderAdminHistoryPanel();
       }
     }
 
@@ -1241,6 +1878,7 @@
       editingAdminBookingId = null;
       showToast("Reserva atualizada com sucesso!");
       renderAdminBookingsTable();
+      renderAdminHistoryPanel();
     }
 
     function adminDeleteBooking(id) {
@@ -1314,7 +1952,6 @@
       }
 
       // Exceção para edição de agendamento já iniciado:
-      // Permite manter o horário de início original e validar o novo horário de término
       const existingBooking = editId ? STATE.allReservations.find(r => r.id === editId) : null;
       const isEditingOngoing = existingBooking &&
         existingBooking.date === dateStr &&
@@ -1359,8 +1996,7 @@
 
     function openBookingModal(defaultStart = null, defaultDate = null, bookingToEdit = null) {
       const targetDateCheck = bookingToEdit ? bookingToEdit.date : (defaultDate || formatDateIso(STATE.currentDate));
-      
-      // Se não for edição e não for Admin, bloqueia abertura para datas/horas passadas
+
       if (!bookingToEdit && !STATE.isAdmin) {
         if (isPastDateTime(targetDateCheck, defaultStart)) {
           showToast("Não é permitido agendar para datas ou horários que já passaram.", false);
@@ -1376,7 +2012,6 @@
       const pinLabelEl = document.getElementById('pinLabel');
       const pinHelperEl = document.getElementById('pinHelperText');
 
-      // Define data mínima como hoje para usuários comuns
       if (!STATE.isAdmin) {
         inputDateEl.min = formatDateIso(new Date());
       } else {
@@ -1394,7 +2029,6 @@
         document.getElementById('inputEndTime').value = bookingToEdit.endTime;
         document.getElementById('inputQty').value = bookingToEdit.quantity;
 
-        // PIN opcional na edição para preservar o original caso não seja alterado
         inputPinEl.value = "";
         inputPinEl.required = false;
         pinLabelEl.innerText = "Alterar PIN de Segurança (Opcional)";
@@ -1409,7 +2043,6 @@
         document.getElementById('modalBookingTitle').innerText = `Novo Agendamento - ${deviceLabel}`;
         document.getElementById('inputEditId').value = "";
 
-        // Se a data selecionada no calendário for passada, assume hoje automaticamente
         const todayIso = formatDateIso(new Date());
         const targetDate = (!STATE.isAdmin && targetDateCheck < todayIso) ? todayIso : targetDateCheck;
         inputDateEl.value = targetDate;
@@ -1421,7 +2054,6 @@
         document.getElementById('inputEndTime').value = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
         document.getElementById('inputQty').value = 25;
 
-        // PIN obrigatório na criação
         inputPinEl.value = "";
         inputPinEl.required = true;
         pinLabelEl.innerText = "PIN de Segurança (4 dígitos) *";
@@ -1486,7 +2118,6 @@
       return dates;
     }
 
-    // SALVA RESERVAS PRESERVANDO OU ATUALIZANDO O PIN
     async function saveBooking() {
       const editId = document.getElementById('inputEditId').value;
       const baseDate = document.getElementById('inputDate').value;
@@ -1496,7 +2127,6 @@
       const recurrenceType = document.getElementById('inputRecurrenceType').value;
       const recurrencePeriod = document.getElementById('inputRecurrenceCount').value;
 
-      // Bloqueio final de segurança (com exceção para estender/alterar término de reserva já iniciada)
       const existingCheck = editId ? STATE.allReservations.find(r => r.id === editId) : null;
       const isEditingOngoing = existingCheck &&
         existingCheck.date === baseDate &&
@@ -1564,10 +2194,10 @@
           quantity,
           pinHash,
           groupId,
-          deviceType: STATE.deviceType
+          deviceType: STATE.deviceType,
+          createdAt: (editId && existingBooking && existingBooking.createdAt) ? existingBooking.createdAt : new Date().toISOString()
         };
 
-        // Mantém campo legado 'pin' se for edição sem alteração e a reserva antiga só tinha 'pin' em texto
         if (editId && !pinRaw && existingBooking && !existingBooking.pinHash && existingBooking.pin) {
           bookingData.pin = existingBooking.pin;
         }
@@ -1589,6 +2219,10 @@
         localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
       }
       updateDeviceUI();
+      if (STATE.isAdmin) {
+        renderAdminBookingsTable();
+        renderAdminHistoryPanel();
+      }
       showToast(editId ? "Agendamento atualizado!" : (targetDates.length > 1 ? `${targetDates.length} agendamentos recorrentes criados!` : "Agendamento salvo!"));
       closeBookingModal();
     }
@@ -1611,7 +2245,6 @@
       STATE.selectedBookingId = null;
     }
 
-    // VERIFICA O PIN DIGITADO USANDO HASH SHA-256
     async function handleEditFromDetails() {
       const booking = STATE.allReservations.find(r => r.id === STATE.selectedBookingId);
       if (!booking) return;
@@ -1685,27 +2318,31 @@
       const targetBooking = STATE.allReservations.find(r => r.id === id);
       if (!targetBooking) return;
 
-      let toDeleteIds = [id];
+      let toDeleteBookings = [targetBooking];
       if (scope === 'future' && targetBooking.groupId) {
-        toDeleteIds = STATE.allReservations
-          .filter(r => r.groupId === targetBooking.groupId && r.date >= targetBooking.date)
-          .map(r => r.id);
+        toDeleteBookings = STATE.allReservations
+          .filter(r => r.groupId === targetBooking.groupId && r.date >= targetBooking.date);
       }
+
+      const toDeleteIds = toDeleteBookings.map(r => r.id);
+
+      // Arquiva no histórico antes de excluir
+      archiveDeletedBookings(toDeleteBookings);
 
       if (STATE.dbConnected && dbRef) {
         toDeleteIds.forEach(delId => {
           dbRef.child(delId).remove();
         });
-        showToast(`${toDeleteIds.length} reserva(s) cancelada(s) na nuvem!`);
+        showToast(`${toDeleteIds.length} reserva(s) cancelada(s) e registrada(s) no histórico!`);
       } else {
         STATE.allReservations = STATE.allReservations.filter(r => !toDeleteIds.includes(r.id));
         localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
-        showToast(`${toDeleteIds.length} reserva(s) removida(s) localmente!`, false);
+        showToast(`${toDeleteIds.length} reserva(s) removida(s) e salva(s) no histórico local!`, false);
         updateDeviceUI();
       }
     }
 
-    // ATUALIZA O GRÁFICO/INDICADOR DO MOMENTO ATUAL (TEMPO REAL)
+    // ATUALIZA O INDICADOR DO MOMENTO ATUAL (TEMPO REAL)
     function updateLiveUsageStats() {
       const now = new Date();
       const todayStr = formatDateIso(now);
@@ -1880,11 +2517,12 @@
         const isCompact = heightPx < 34;
         const widthPct = 95 / item.totalColumns;
         const leftPct = 1.5 + (item.column * widthPct);
+        const pastCardClass = isBookingPast(r) ? 'past-event-card' : '';
 
         html += `
           <div onclick="openDetailsModal('${r.id}')"
                title="${r.professor} (${r.startTime}-${r.endTime} • ${r.sala})"
-               class="absolute rounded-md ${isCompact ? 'px-1.5 py-0 flex items-center' : 'p-1.5 md:p-2'} border shadow-sm event-card bg-blue-600 text-white border-blue-700 cursor-pointer overflow-hidden z-20 box-border"
+               class="absolute rounded-md ${isCompact ? 'px-1.5 py-0 flex items-center' : 'p-1.5 md:p-2'} border shadow-sm event-card ${pastCardClass} bg-blue-600 text-white border-blue-700 cursor-pointer overflow-hidden z-20 box-border"
                style="top: ${topPx}px; height: ${heightPx}px; left: ${leftPct}%; width: ${widthPct - 1}%;">
             ${isCompact ? `
               <div class="flex justify-between items-center gap-1 w-full leading-none">
@@ -1982,10 +2620,11 @@
           );
         }
 
-        html += `<div class="space-y-2 ${isPastDay ? 'opacity-65' : ''}">`;
+        html += `<div class="space-y-2">`;
         dayBookings.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)).forEach(r => {
+          const pastCardClass = isBookingPast(r) ? 'past-event-card' : '';
           html += `
-            <div onclick="openDetailsModal('${r.id}')" class="bg-white border border-slate-200 rounded-xl p-2 shadow-sm hover:shadow transition cursor-pointer space-y-1">
+            <div onclick="openDetailsModal('${r.id}')" class="relative bg-white border border-slate-200 rounded-xl p-2 shadow-sm hover:shadow transition cursor-pointer space-y-1 overflow-hidden ${pastCardClass}">
               <div class="flex justify-between items-center text-[10px] font-bold text-slate-500">
                 <span>${r.startTime}-${r.endTime}</span>
                 <span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-black">${emoji} ${r.quantity}</span>
@@ -2053,8 +2692,9 @@
         html += `<tr><td colspan="5" class="text-center py-6 text-slate-400">Nenhum agendamento para esta data.</td></tr>`;
       } else {
         filtered.forEach(r => {
+          const pastRowClass = isBookingPast(r) ? 'past-row bg-slate-50/70' : '';
           html += `
-            <tr class="hover:bg-slate-50 transition">
+            <tr class="hover:bg-slate-50 transition ${pastRowClass}">
               <td class="py-2.5 px-3 font-bold text-slate-800 whitespace-nowrap">${r.startTime} - ${r.endTime}</td>
               <td class="py-2.5 px-3 font-bold text-blue-600">${r.professor}</td>
               <td class="py-2.5 px-3 text-slate-600">${r.sala} (${r.turma})</td>
