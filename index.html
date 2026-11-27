@@ -24,6 +24,7 @@
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
     /* Estilo visual desfocado/bloqueado para horários passados */
     .past-slot {
       background-color: rgba(241, 245, 249, 0.85);
@@ -37,6 +38,20 @@
       backdrop-filter: blur(1.5px);
       cursor: not-allowed !important;
     }
+
+    /* Estilo visual para dias bloqueados (Feriados, Recessos e Emendas) */
+    .holiday-slot {
+      background-color: rgba(254, 242, 242, 0.75);
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(254, 202, 202, 0.35),
+        rgba(254, 202, 202, 0.35) 8px,
+        transparent 8px,
+        transparent 16px
+      );
+      cursor: not-allowed !important;
+    }
+
     /* Desfoque visual para cartões de agendamentos já encerrados */
     .past-event-card {
       opacity: 0.48;
@@ -50,35 +65,39 @@
 </head>
 <body class="bg-slate-50 font-sans text-slate-800 antialiased h-screen flex flex-col overflow-hidden">
 
-  <!-- TOAST DE NOTIFICAÇÃO -->
+  <!-- ===================================================================== -->
+  <!-- 1. NOTIFICAÇÃO FLUTUANTE (TOAST)                                      -->
+  <!-- ===================================================================== -->
   <div id="toastNotification" class="fixed bottom-4 right-4 z-[80] transform translate-y-20 opacity-0 transition-all duration-300 ease-in-out flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white shadow-xl pointer-events-none">
     <i id="toastIcon" class="fa-solid fa-circle-check text-base"></i>
     <span id="toastMessage">Notificação</span>
   </div>
 
-  <!-- TOP BAR / HEADER -->
+  <!-- ===================================================================== -->
+  <!-- 2. CABEÇALHO SUPERIOR (TOP BAR / HEADER)                               -->
+  <!-- ===================================================================== -->
   <header class="bg-white border-b border-slate-200 px-3 py-2.5 md:px-6 md:py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0 shadow-sm z-20">
-    <!-- Logo e Seletor de Equipamento -->
+    <!-- Logo da Escola e Seletor de Equipamento / Unidade -->
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-2.5">
-        <!-- Quadrado da Logo Exclusivo da Escola -->
         <div id="logoContainer" class="bg-blue-600 text-white p-2 rounded-xl shadow-md flex items-center justify-center overflow-hidden w-10 h-10 shrink-0">
           <i id="headerLogoIcon" class="fa-solid fa-school text-lg md:text-xl"></i>
           <img id="headerLogoImg" src="" alt="Logo Escola" class="w-full h-full object-cover hidden">
         </div>
         <div>
-          <!-- COMBOBOX E ÍCONE DO EQUIPAMENTO -->
+          <!-- Seletor de Equipamento vinculado às Unidades (Chromebook = Unidade 1 | Tablet = Unidade 2) -->
           <div class="flex items-center gap-2">
             <i id="headerDeviceIcon" class="fa-solid fa-laptop text-blue-600 text-base"></i>
             <select id="deviceTypeSelect" class="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 font-extrabold text-sm md:text-base rounded-lg px-2 py-0.5 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
-              <option value="chromebook">Chromebooks</option>
-              <option value="tablet">Tablets</option>
+              <option value="chromebook">Chromebooks (Unidade 1)</option>
+              <option value="tablet">Tablets (Unidade 2)</option>
             </select>
           </div>
           <p id="headerSubTitle" class="text-[10px] md:text-xs text-slate-500 font-medium hidden sm:block">Agendamento - Bento Benedini</p>
         </div>
       </div>
 
+      <!-- Botões Mobile -->
       <div class="flex items-center gap-1.5 sm:hidden">
         <button id="btnToggleSidebar" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1">
           <i class="fa-solid fa-chart-pie text-blue-600"></i> Resumo
@@ -89,7 +108,7 @@
       </div>
     </div>
 
-    <!-- Navegação de Data -->
+    <!-- Navegação de Data (Hoje / Anterior / Próximo) -->
     <div class="flex items-center justify-between sm:justify-center space-x-1 sm:space-x-2 py-1 sm:py-0 border-y sm:border-y-0 border-slate-100">
       <button id="btnToday" class="px-2.5 py-1 md:px-3.5 md:py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">Hoje</button>
       <div class="flex items-center">
@@ -99,9 +118,9 @@
       </div>
     </div>
 
-    <!-- Controles da Visão e Ações -->
+    <!-- Controles da Visão, Status da Nuvem e Botões Principais -->
     <div class="flex items-center justify-between sm:justify-end space-x-2">
-      <!-- INDICADOR DISCRETO DE CONEXÃO COM A NUVEM (APENAS ÍCONE VERDE OU NUVEM CORTADA VERMELHA) -->
+      <!-- Indicador Discreto de Conexão com o Banco (Nuvem Verde = OK | Nuvem Cortada Vermelha = Offline) -->
       <span id="dbStatusIndicator" class="flex items-center justify-center w-8 h-8 rounded-full bg-rose-50 border border-rose-200 text-rose-600 shrink-0 select-none" title="Sem conexão com o banco de dados (Modo Local)">
         <span class="relative inline-flex items-center justify-center">
           <i class="fa-solid fa-cloud text-sm"></i>
@@ -129,8 +148,11 @@
     </div>
   </header>
 
-  <!-- MAIN CONTENT LAYOUT -->
+  <!-- ===================================================================== -->
+  <!-- 3. LAYOUT PRINCIPAL (BARRA LATERAL + CALENDÁRIO)                      -->
+  <!-- ===================================================================== -->
   <div class="flex flex-1 overflow-hidden relative">
+    <!-- Barra Lateral (Sidebar) -->
     <aside id="sidebar" class="absolute md:relative inset-y-0 left-0 w-72 bg-white border-r border-slate-200 p-4 md:p-5 flex flex-col justify-between shrink-0 overflow-y-auto z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-xl md:shadow-none">
       <div class="space-y-4">
         <div class="flex items-center justify-between md:hidden pb-2 border-b border-slate-100">
@@ -138,12 +160,13 @@
           <button id="btnCloseSidebar" class="p-1 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-base"></i></button>
         </div>
 
+        <!-- Seletor Rápido de Data -->
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Selecionar Data</label>
           <input type="date" id="miniDatePicker" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
-        <!-- USO NO MOMENTO ATUAL (TEMPO REAL) -->
+        <!-- Indicador em Tempo Real (Em Uso Agora) -->
         <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold uppercase text-slate-500 flex items-center gap-1.5">
@@ -170,6 +193,7 @@
           </div>
         </div>
 
+        <!-- Campo de Busca -->
         <div>
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Buscar</label>
           <div class="relative">
@@ -188,7 +212,9 @@
     <main class="flex-1 overflow-auto bg-white flex flex-col relative" id="calendarContainer"></main>
   </div>
 
-  <!-- MODAL DE AGENDAMENTO -->
+  <!-- ===================================================================== -->
+  <!-- 4. MODAL DE CRIAÇÃO / EDIÇÃO / DUPLICAÇÃO DE AGENDAMENTO              -->
+  <!-- ===================================================================== -->
   <div id="modalBooking" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 hidden p-0 sm:p-4">
     <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 max-h-[92vh] sm:max-h-[90vh] flex flex-col">
       <div class="bg-slate-50 px-4 sm:px-6 py-3.5 border-b border-slate-200 flex justify-between items-center shrink-0">
@@ -205,19 +231,31 @@
           <input type="text" id="inputProf" required placeholder="Ex: Prof(a). Carlos Silva" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
+        <!-- Campos de Sala e Turma vinculados às listas da Unidade 1 ou Unidade 2 -->
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Sala de Aula *</label>
-            <input type="text" id="inputSala" required placeholder="Ex: Sala 08" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-slate-600 uppercase">Sala de Aula *</label>
+              <span id="unitSalaBadge" class="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 rounded">Unidade 1</span>
+            </div>
+            <input type="text" id="inputSala" list="unitSalasList" required placeholder="Selecione ou digite..." class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <datalist id="unitSalasList"></datalist>
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Turma *</label>
-            <input type="text" id="inputTurma" required placeholder="Ex: 9º Ano B" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-slate-600 uppercase">Turma *</label>
+              <span id="unitTurmaBadge" class="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 rounded">Unidade 1</span>
+            </div>
+            <input type="text" id="inputTurma" list="unitTurmasList" required placeholder="Selecione ou digite..." class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <datalist id="unitTurmasList"></datalist>
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Data Inicial *</label>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-xs font-bold text-slate-600 uppercase">Data Inicial *</label>
+            <span id="holidayWarningBadge" class="hidden text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700">Feriado / Recesso</span>
+          </div>
           <input type="date" id="inputDate" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
@@ -240,7 +278,7 @@
           <input type="number" id="inputQty" min="1" required placeholder="Ex: 25" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
 
-        <!-- RECORRÊNCIA DE AGENDAMENTO FLEXÍVEL -->
+        <!-- Opções de Recorrência -->
         <div id="recurrenceBox" class="bg-blue-50/60 border border-blue-200 p-3 rounded-xl space-y-2">
           <div class="flex items-center justify-between">
             <label class="block text-xs font-bold text-blue-900 uppercase">
@@ -268,10 +306,11 @@
             </div>
           </div>
           <p id="recurrenceHelpText" class="text-[10px] text-blue-700 font-medium hidden">
-            As reservas serão geradas automaticamente mantendo o mesmo horário e local.
+            Feriados e recessos cadastrados serão pulados automaticamente.
           </p>
         </div>
 
+        <!-- PIN de Segurança -->
         <div id="pinBox" class="bg-slate-50 p-3 rounded-xl border border-slate-200">
           <label id="pinLabel" class="block text-xs font-bold text-slate-700 mb-1">PIN de Segurança (4 dígitos) *</label>
           <p id="pinHelperText" class="text-[10px] text-slate-500 mb-2">Será salvo de forma criptografada (SHA-256) para sua privacidade.</p>
@@ -288,7 +327,52 @@
     </div>
   </div>
 
-  <!-- MODAL DETALHES -->
+  <!-- ===================================================================== -->
+  <!-- 5. MODAL DE FEEDBACK DE CONFLITO NA RECORRÊNCIA (Z-INDEX 65)          -->
+  <!-- ===================================================================== -->
+  <div id="modalRecurrenceConflict" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[65] hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[85vh]">
+      <div class="bg-amber-500 text-white px-5 py-3.5 flex items-center justify-between shrink-0">
+        <h3 class="text-sm font-bold flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation"></i> Conflito Encontrado na Recorrência
+        </h3>
+        <button onclick="closeConflictModal()" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+      </div>
+      <div class="p-5 space-y-4 overflow-y-auto text-xs">
+        <p class="text-slate-700 leading-relaxed">
+          Algumas datas da sua repetição já atingiram o limite de equipamentos disponíveis. Veja o resumo abaixo:
+        </p>
+
+        <!-- Lista de datas com conflito -->
+        <div class="bg-rose-50 border border-rose-200 rounded-xl p-3 space-y-1.5">
+          <p class="font-bold text-rose-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-xmark"></i> Datas indisponíveis (<span id="conflictBlockedCount">0</span>):
+          </p>
+          <ul id="conflictBlockedList" class="list-disc pl-5 text-rose-700 space-y-0.5 max-h-28 overflow-y-auto"></ul>
+        </div>
+
+        <!-- Lista de datas livres -->
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-1.5">
+          <p class="font-bold text-emerald-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-check"></i> Datas livres que podem ser agendadas (<span id="conflictValidCount">0</span>):
+          </p>
+          <p id="conflictValidPreview" class="text-emerald-700 leading-relaxed"></p>
+        </div>
+      </div>
+      <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex flex-col sm:flex-row justify-end gap-2 shrink-0">
+        <button onclick="closeConflictModal()" class="px-4 py-2 border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold text-xs rounded-xl transition">
+          Cancelar Tudo
+        </button>
+        <button id="btnConfirmPartialRecurrence" onclick="confirmPartialRecurrence()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-check"></i> Agendar Apenas nas Datas Livres
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 6. MODAL DETALHES DA RESERVA (COM BOTÃO DUPLICAR)                     -->
+  <!-- ===================================================================== -->
   <div id="modalDetails" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 hidden p-0 sm:p-4">
     <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
       <div class="bg-blue-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
@@ -320,19 +404,26 @@
             <span id="detailQty" class="text-xs sm:text-sm font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">---</span>
           </div>
         </div>
-        <div class="pt-2 flex justify-between items-center gap-2">
-          <button id="btnDeleteDetail" class="flex-1 px-3 py-2 border border-rose-300 text-rose-600 hover:bg-rose-50 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1">
-            <i class="fa-solid fa-trash-can"></i> Cancelar Reserva
+
+        <!-- Botões: Cancelar, Duplicar e Editar -->
+        <div class="pt-2 grid grid-cols-3 gap-2">
+          <button id="btnDeleteDetail" class="px-2.5 py-2 border border-rose-300 text-rose-600 hover:bg-rose-50 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-trash-can"></i> Cancelar
           </button>
-          <button id="btnEditDetail" class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1 shadow">
-            <i class="fa-solid fa-pen-to-square"></i> Editar Reserva
+          <button id="btnDuplicateDetail" class="px-2.5 py-2 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-copy"></i> Duplicar
+          </button>
+          <button id="btnEditDetail" class="px-2.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1 shadow">
+            <i class="fa-solid fa-pen-to-square"></i> Editar
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (SOBREPOSIÇÃO PRIORITÁRIA Z-INDEX 70) -->
+  <!-- ===================================================================== -->
+  <!-- 7. MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (Z-INDEX 70)                  -->
+  <!-- ===================================================================== -->
   <div id="modalConfirmCancel" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] hidden p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 p-6 space-y-4">
       <div class="flex items-center gap-3 text-rose-600">
@@ -358,7 +449,9 @@
     </div>
   </div>
 
-  <!-- MODAL PAINEL ADMIN -->
+  <!-- ===================================================================== -->
+  <!-- 8. MODAL PAINEL DO ADMINISTRADOR                                      -->
+  <!-- ===================================================================== -->
   <div id="modalAdmin" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden p-3 sm:p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
       <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
@@ -369,13 +462,14 @@
         <button id="btnCloseAdmin" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
+      <!-- Tela de Login Admin -->
       <div id="adminAuthBox" class="p-8 text-center space-y-4">
         <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl">
           <i class="fa-solid fa-lock"></i>
         </div>
         <div>
           <h4 class="font-bold text-slate-800 text-base">Acesso Restrito</h4>
-          <p class="text-xs text-slate-500">Digite a senha de administrador para gerenciar o sistema.</p>
+          <p class="text-xs text-slate-500">Digite a senha de administrador e pressione Enter para gerenciar o sistema.</p>
         </div>
         <div class="max-w-xs mx-auto space-y-2">
           <input type="password" id="inputAdminPassword" placeholder="Senha do Admin" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm text-center font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
@@ -383,9 +477,13 @@
         </div>
       </div>
 
+      <!-- Conteúdo Interno do Painel Admin -->
       <div id="adminContentBox" class="hidden flex-1 flex flex-col overflow-hidden">
         <div class="flex border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 shrink-0 overflow-x-auto">
-          <button id="tabAdminConfig" class="px-4 py-3 border-b-2 border-amber-500 text-amber-600 bg-white whitespace-nowrap">Personalização & Configurações</button>
+          <button id="tabAdminConfig" class="px-4 py-3 border-b-2 border-amber-500 text-amber-600 bg-white whitespace-nowrap">Configurações & Unidades</button>
+          <button id="tabAdminHolidays" class="px-4 py-3 border-b-2 border-transparent hover:text-slate-900 whitespace-nowrap flex items-center gap-1.5">
+            <i class="fa-solid fa-calendar-xmark text-rose-600"></i> Feriados & Recessos
+          </button>
           <button id="tabAdminList" class="px-4 py-3 border-b-2 border-transparent hover:text-slate-900 whitespace-nowrap">Gerenciar Reservas</button>
           <button id="tabAdminHistory" class="px-4 py-3 border-b-2 border-transparent hover:text-slate-900 whitespace-nowrap flex items-center gap-1.5">
             <i class="fa-solid fa-clock-rotate-left text-blue-600"></i> Histórico & Relatórios
@@ -394,29 +492,109 @@
         </div>
 
         <div class="p-6 overflow-y-auto space-y-6 flex-1">
-          <!-- ABA 1: CONFIGURAÇÕES -->
+          <!-- ABA 1: CONFIGURAÇÕES, UNIDADES (SALAS/TURMAS) E BRANDING -->
           <div id="panelAdminConfig" class="space-y-5">
-            <!-- PERSONALIZAÇÃO DE IMAGENS E TEXTOS DO SITE -->
+
+            <!-- CADASTRO DE SALAS E TURMAS POR UNIDADE -->
+            <div class="bg-indigo-50/60 p-4 rounded-xl border border-indigo-200 space-y-4">
+              <div>
+                <h5 class="font-bold text-xs text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <i class="fa-solid fa-building text-indigo-600"></i> Cadastro de Salas e Turmas por Unidade
+                </h5>
+                <p class="text-xs text-slate-600 mt-0.5">
+                  <strong>Chromebooks</strong> puxam automaticamente os dados da <strong>Unidade 1</strong>. <strong>Tablets</strong> puxam da <strong>Unidade 2</strong>.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <!-- UNIDADE 1 (CHROMEBOOKS) -->
+                <div class="bg-white p-3.5 rounded-xl border border-indigo-200 space-y-3">
+                  <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span class="font-extrabold text-indigo-900">💻 Unidade 1 (Chromebooks)</span>
+                  </div>
+                  <!-- Salas Unidade 1 -->
+                  <div class="space-y-1.5">
+                    <label class="block font-bold text-slate-700">Salas da Unidade 1:</label>
+                    <div class="flex gap-1.5">
+                      <input type="text" id="newSalaU1" placeholder="Ex: Sala 01" class="flex-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs">
+                      <button type="button" onclick="addUnitItem('unit1', 'salas', 'newSalaU1')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg">+</button>
+                    </div>
+                    <div id="listSalasU1" class="flex flex-wrap gap-1.5 pt-1"></div>
+                  </div>
+                  <!-- Turmas Unidade 1 -->
+                  <div class="space-y-1.5 pt-2 border-t border-slate-100">
+                    <label class="block font-bold text-slate-700">Turmas da Unidade 1:</label>
+                    <div class="flex gap-1.5">
+                      <input type="text" id="newTurmaU1" placeholder="Ex: 6º Ano A" class="flex-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs">
+                      <button type="button" onclick="addUnitItem('unit1', 'turmas', 'newTurmaU1')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg">+</button>
+                    </div>
+                    <div id="listTurmasU1" class="flex flex-wrap gap-1.5 pt-1"></div>
+                  </div>
+                </div>
+
+                <!-- UNIDADE 2 (TABLETS) -->
+                <div class="bg-white p-3.5 rounded-xl border border-indigo-200 space-y-3">
+                  <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span class="font-extrabold text-indigo-900">📱 Unidade 2 (Tablets)</span>
+                  </div>
+                  <!-- Salas Unidade 2 -->
+                  <div class="space-y-1.5">
+                    <label class="block font-bold text-slate-700">Salas da Unidade 2:</label>
+                    <div class="flex gap-1.5">
+                      <input type="text" id="newSalaU2" placeholder="Ex: Sala Kids 02" class="flex-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs">
+                      <button type="button" onclick="addUnitItem('unit2', 'salas', 'newSalaU2')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg">+</button>
+                    </div>
+                    <div id="listSalasU2" class="flex flex-wrap gap-1.5 pt-1"></div>
+                  </div>
+                  <!-- Turmas Unidade 2 -->
+                  <div class="space-y-1.5 pt-2 border-t border-slate-100">
+                    <label class="block font-bold text-slate-700">Turmas da Unidade 2:</label>
+                    <div class="flex gap-1.5">
+                      <input type="text" id="newTurmaU2" placeholder="Ex: 3º Ano B" class="flex-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs">
+                      <button type="button" onclick="addUnitItem('unit2', 'turmas', 'newTurmaU2')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg">+</button>
+                    </div>
+                    <div id="listTurmasU2" class="flex flex-wrap gap-1.5 pt-1"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ESTOQUE DE EQUIPAMENTOS -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Estoque Total de Equipamentos</h5>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">Chromebooks (Unidade 1)</label>
+                  <div class="flex gap-2">
+                    <input type="number" id="inputAdminStockChromebook" min="1" max="300" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-center">
+                    <button id="btnSaveStockChromebook" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar</button>
+                  </div>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">Tablets (Unidade 2)</label>
+                  <div class="flex gap-2">
+                    <input type="number" id="inputAdminStockTablet" min="1" max="300" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-center">
+                    <button id="btnSaveStockTablet" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PERSONALIZAÇÃO DE IMAGENS E TEXTOS -->
             <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-200 space-y-3">
               <h5 class="font-bold text-xs text-blue-900 uppercase tracking-wider">Personalização do Site e Imagens</h5>
-              <p class="text-xs text-slate-500">Faça upload da logo da escola e do favicon diretamente do seu dispositivo, e edite os textos do site.</p>
               <div class="space-y-3 text-xs">
-                <!-- Upload de Logo -->
                 <div class="space-y-1">
                   <label class="block font-bold text-slate-700">Logo da Escola (Upload de Imagem)</label>
                   <input type="file" id="inputAdminLogoFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
-                  <p class="text-[10px] text-slate-400">Ou cole a URL direta de uma imagem na web:</p>
-                  <input type="url" id="inputAdminLogoUrl" placeholder="https://exemplo.com/logo-escola.png" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono">
+                  <input type="url" id="inputAdminLogoUrl" placeholder="https://exemplo.com/logo-escola.png" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono mt-1">
                 </div>
-                <!-- Upload de Favicon -->
                 <div class="space-y-1">
                   <label class="block font-bold text-slate-700">Ícone da Aba do Navegador - Favicon (Upload)</label>
                   <input type="file" id="inputAdminFaviconFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
                   <input type="url" id="inputAdminFaviconUrl" placeholder="https://exemplo.com/favicon.ico" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono mt-1">
                 </div>
-                <!-- Edição de Textos do Site -->
-                <div class="pt-2 border-t border-blue-200/60 space-y-2">
-                  <h6 class="font-bold text-blue-900">Editar Textos e Nomes do Site</h6>
+                <div class="pt-2 border-t border-blue-200/60 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label class="block font-bold text-slate-700 mb-1">Subtítulo do Cabeçalho</label>
                     <input type="text" id="inputAdminSchoolTitle" placeholder="Ex: Agendamento - Bento Benedini" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold">
@@ -428,37 +606,15 @@
                 </div>
                 <div class="pt-2 flex justify-end">
                   <button id="btnSaveAdminBranding" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow">
-                    Salvar Personalização, Imagens e Textos
+                    Salvar Personalização
                   </button>
                 </div>
               </div>
             </div>
 
-            <!-- ESTOQUE DE EQUIPAMENTOS (CHROMEBOOKS & TABLETS) -->
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-              <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Estoque Total de Equipamentos</h5>
-              <p class="text-xs text-slate-500">Ajuste a quantidade máxima de aparelhos disponíveis para cada unidade.</p>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
-                  <label class="block text-xs font-bold text-slate-700">Chromebooks</label>
-                  <div class="flex gap-2">
-                    <input type="number" id="inputAdminStockChromebook" min="1" max="300" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-center">
-                    <button id="btnSaveStockChromebook" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar</button>
-                  </div>
-                </div>
-                <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
-                  <label class="block text-xs font-bold text-slate-700">Tablets</label>
-                  <div class="flex gap-2">
-                    <input type="number" id="inputAdminStockTablet" min="1" max="300" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-center">
-                    <button id="btnSaveStockTablet" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Salvar</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+            <!-- ALTERAR SENHA DO ADMIN -->
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
               <h5 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Alterar Senha do Admin (Criptografada em SHA-256)</h5>
-              <p class="text-xs text-slate-500">Defina uma nova senha de acesso ao Painel de Administrador.</p>
               <div class="flex items-center gap-3">
                 <input type="password" id="inputNewAdminPass" placeholder="Nova Senha Admin" class="w-48 px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold">
                 <button id="btnSaveAdminPass" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition">Atualizar Senha</button>
@@ -466,7 +622,60 @@
             </div>
           </div>
 
-          <!-- ABA 2: GERENCIAR RESERVAS DO ADMIN -->
+          <!-- ABA 2: FERIADOS NACIONAIS AUTOMÁTICOS & RECESSOS / EMENDAS -->
+          <div id="panelAdminHolidays" class="hidden space-y-5">
+            <!-- Adicionar Recesso / Emenda Manual -->
+            <div class="bg-rose-50/70 p-4 rounded-xl border border-rose-200 space-y-3">
+              <h5 class="font-bold text-xs text-rose-900 uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-calendar-plus text-rose-600"></i> Cadastrar Recesso, Emenda ou Dia Sem Aula
+              </h5>
+              <p class="text-xs text-slate-600">
+                Os dias cadastrados abaixo (somados aos feriados nacionais automáticos) ficarão bloqueados na agenda e serão pulados em reservas recorrentes.
+              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <input type="date" id="inputCustomHolidayDate" class="px-3 py-2 border border-slate-300 rounded-lg bg-white font-semibold">
+                <input type="text" id="inputCustomHolidayName" placeholder="Ex: Emenda Corpus Christi / Recesso" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+                <button type="button" onclick="addCustomHoliday()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg shadow transition">
+                  Adicionar Bloqueio
+                </button>
+              </div>
+            </div>
+
+            <!-- Lista de Recessos Personalizados -->
+            <div class="space-y-2">
+              <h6 class="font-bold text-xs text-slate-700 uppercase">Recessos e Emendas Cadastrados Manualmente</h6>
+              <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-slate-100 border-b border-slate-200 font-bold text-slate-600">
+                    <tr>
+                      <th class="p-2.5">Data</th>
+                      <th class="p-2.5">Descrição</th>
+                      <th class="p-2.5 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="customHolidaysTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Lista de Feriados Nacionais do Ano Atual -->
+            <div class="space-y-2">
+              <h6 class="font-bold text-xs text-slate-700 uppercase">Feriados Nacionais Sincronizados (<span id="currentYearLabel"></span>)</h6>
+              <div class="border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-slate-100 border-b border-slate-200 font-bold text-slate-600 sticky top-0">
+                    <tr>
+                      <th class="p-2.5">Data</th>
+                      <th class="p-2.5">Feriado Nacional</th>
+                    </tr>
+                  </thead>
+                  <tbody id="nationalHolidaysTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ABA 3: GERENCIAR RESERVAS ATIVAS -->
           <div id="panelAdminList" class="hidden space-y-3">
             <div class="flex justify-between items-center">
               <div class="flex items-center gap-3">
@@ -497,9 +706,8 @@
             </div>
           </div>
 
-          <!-- ABA 3: HISTÓRICO PERMANENTE & RELATÓRIOS -->
+          <!-- ABA 4: HISTÓRICO PERMANENTE & RELATÓRIOS -->
           <div id="panelAdminHistory" class="hidden space-y-5">
-            <!-- INDICADORES ESTATÍSTICOS -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-3 space-y-1">
                 <span class="text-[10px] font-bold uppercase text-blue-700 flex items-center gap-1"><i class="fa-solid fa-chalkboard-user"></i> Prof. que mais solicitou</span>
@@ -523,7 +731,6 @@
               </div>
             </div>
 
-            <!-- CONTROLES DE FILTRO E EXPORTAÇÃO (EXCEL / PDF) -->
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div class="flex flex-wrap items-center gap-2">
                 <label class="text-xs font-bold text-slate-700">Filtrar / Exportar:</label>
@@ -544,7 +751,6 @@
               </div>
             </div>
 
-            <!-- TABELA COMPLETA DO HISTÓRICO -->
             <div class="space-y-2">
               <div class="flex justify-between items-center">
                 <h5 class="font-bold text-xs text-slate-700 uppercase">Registro Histórico Completo</h5>
@@ -568,7 +774,7 @@
             </div>
           </div>
 
-          <!-- ABA 4: FIREBASE -->
+          <!-- ABA 5: FIREBASE -->
           <div id="panelAdminFirebase" class="hidden space-y-4">
             <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 text-xs text-amber-800 space-y-1">
               <p class="font-bold">Status da Conexão Firebase</p>
@@ -608,9 +814,13 @@
     </div>
   </div>
 
-  <!-- SCRIPT DE FUNCIONAMENTO E CRIPTOGRAFIA SHA-256 -->
+  <!-- ===================================================================== -->
+  <!-- 9. LÓGICA JAVASCRIPT COMPLETA E COMENTADA POR MÓDULOS                 -->
+  <!-- ===================================================================== -->
   <script>
-    // FUNÇÃO CRIPTOGRÁFICA CRIPTO-HASH SHA-256 NATIVA
+    // =========================================================================
+    // MÓDULO 1: CRIPTOGRAFIA SHA-256 E ESTADO GLOBAL DA APLICAÇÃO
+    // =========================================================================
     async function hashText(text) {
       if (!text) return "";
       const encoder = new TextEncoder();
@@ -620,8 +830,14 @@
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join("");
     }
 
-    // Hash da senha inicial 'admin123'
+    // Hash padrão inicial ('admin123')
     const DEFAULT_ADMIN_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+
+    // Estrutura padrão de Salas e Turmas por Unidade
+    const DEFAULT_UNITS_DATA = {
+      unit1: { salas: [], turmas: [] }, // Chromebook -> Unidade 1
+      unit2: { salas: [], turmas: [] }  // Tablet -> Unidade 2
+    };
 
     const STATE = {
       deviceType: localStorage.getItem('chromebook_device_type') || 'chromebook',
@@ -634,6 +850,8 @@
         schoolTitle: 'Agendamento - Bento Benedini',
         footerText: 'Controle de Equipamentos'
       },
+      unitsData: JSON.parse(localStorage.getItem('chromebook_units_data')) || DEFAULT_UNITS_DATA,
+      customHolidays: JSON.parse(localStorage.getItem('chromebook_custom_holidays')) || [],
       isAdmin: false,
       allReservations: [],
       historyLogs: JSON.parse(localStorage.getItem('chromebook_history_logs')) || [],
@@ -652,7 +870,93 @@
     let settingsRef = null;
     let pendingCancelBookingId = null;
     let editingAdminBookingId = null;
+    let pendingPartialRecurrencePayload = null;
 
+    // Paleta de tons de azul/índigo/ciano para alternância visual por professor
+    const PROFESSOR_BLUE_PALETTE = [
+      { bg: 'bg-blue-600',   border: 'border-blue-700' },
+      { bg: 'bg-sky-600',    border: 'border-sky-700' },
+      { bg: 'bg-indigo-600', border: 'border-indigo-700' },
+      { bg: 'bg-cyan-700',   border: 'border-cyan-800' },
+      { bg: 'bg-blue-800',   border: 'border-blue-900' },
+      { bg: 'bg-sky-700',    border: 'border-sky-800' },
+      { bg: 'bg-indigo-700', border: 'border-indigo-800' }
+    ];
+
+    // Gera consistentemente um tom de azul baseado no nome do professor
+    function getProfessorColorClasses(profName) {
+      if (!profName) return PROFESSOR_BLUE_PALETTE[0];
+      const normalized = profName.trim().toLowerCase();
+      let hash = 0;
+      for (let i = 0; i < normalized.length; i++) {
+        hash = normalized.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const index = Math.abs(hash) % PROFESSOR_BLUE_PALETTE.length;
+      return PROFESSOR_BLUE_PALETTE[index];
+    }
+
+    // =========================================================================
+    // MÓDULO 2: CÁLCULO AUTOMÁTICO DE FERIADOS NACIONAIS + RECESSOS DO ADMIN
+    // =========================================================================
+    function getEasterDate(year) {
+      const a = year % 19;
+      const b = Math.floor(year / 100);
+      const c = year % 100;
+      const d = Math.floor(b / 4);
+      const e = b % 4;
+      const f = Math.floor((b + 8) / 25);
+      const g = Math.floor((b - f + 1) / 3);
+      const h = (19 * a + b - d - g + 15) % 30;
+      const i = Math.floor(c / 4);
+      const k = c % 4;
+      const l = (32 + 2 * e + 2 * i - h - k) % 7;
+      const m = Math.floor((a + 11 * h + 22 * l) / 451);
+      const month = Math.floor((h + l - 7 * m + 114) / 31);
+      const day = ((h + l - 7 * m + 114) % 31) + 1;
+      return new Date(year, month - 1, day);
+    }
+
+    function getNationalHolidaysForYear(year) {
+      const easter = getEasterDate(year);
+      const addDays = (base, days) => {
+        const d = new Date(base);
+        d.setDate(d.getDate() + days);
+        return formatDateIso(d);
+      };
+
+      return [
+        { date: `${year}-01-01`, name: 'Confraternização Universal (Ano Novo)' },
+        { date: addDays(easter, -48), name: 'Segunda-feira de Carnaval' },
+        { date: addDays(easter, -47), name: 'Terça-feira de Carnaval' },
+        { date: addDays(easter, -2),  name: 'Paixão de Cristo (Sexta-feira Santa)' },
+        { date: `${year}-04-21`, name: 'Tiradentes' },
+        { date: `${year}-05-01`, name: 'Dia Mundial do Trabalho' },
+        { date: addDays(easter, 60),  name: 'Corpus Christi' },
+        { date: `${year}-09-07`, name: 'Independência do Brasil' },
+        { date: `${year}-10-12`, name: 'Nossa Senhora Aparecida' },
+        { date: `${year}-11-02`, name: 'Finados' },
+        { date: `${year}-11-15`, name: 'Proclamação da República' },
+        { date: `${year}-11-20`, name: 'Dia Nacional de Zumbi e da Consciência Negra' },
+        { date: `${year}-12-25`, name: 'Natal' }
+      ];
+    }
+
+    // Verifica se uma data YYYY-MM-DD é feriado nacional ou recesso/emenda cadastrado
+    function getHolidayInfo(dateStr) {
+      if (!dateStr) return null;
+      const year = parseInt(dateStr.split('-')[0], 10);
+      const national = getNationalHolidaysForYear(year).find(h => h.date === dateStr);
+      if (national) return { type: 'Feriado Nacional', name: national.name };
+
+      const custom = (STATE.customHolidays || []).find(h => h.date === dateStr);
+      if (custom) return { type: 'Recesso / Emenda', name: custom.name };
+
+      return null;
+    }
+
+    // =========================================================================
+    // MÓDULO 3: INICIALIZAÇÃO E SINCRONIZAÇÃO COM O FIREBASE
+    // =========================================================================
     document.addEventListener('DOMContentLoaded', () => {
       applyBranding(STATE.branding);
       initFirebase();
@@ -666,7 +970,7 @@
         updateDeviceUI();
       }
 
-      // Atualiza o uso ao vivo e a linha do tempo a cada 30 segundos
+      // Atualiza o uso em tempo real e a linha do tempo a cada 30 segundos
       setInterval(() => {
         updateLiveUsageStats();
         if (STATE.currentView === 'day' && formatDateIso(STATE.currentDate) === formatDateIso(new Date())) {
@@ -674,137 +978,6 @@
         }
       }, 30000);
     });
-
-    // GARANTE QUE RESERVAS ATIVAS SEMPRE ESTEJAM ESPELHADAS NO HISTÓRICO PERMANENTE
-    function syncActiveToHistoryLogs() {
-      let changed = false;
-      STATE.allReservations.forEach(r => {
-        const exists = STATE.historyLogs.find(h => h.id === r.id);
-        if (!exists) {
-          const entry = {
-            id: r.id,
-            professor: r.professor,
-            sala: r.sala,
-            turma: r.turma,
-            date: r.date,
-            startTime: r.startTime,
-            endTime: r.endTime,
-            quantity: r.quantity,
-            deviceType: r.deviceType || 'chromebook',
-            status: 'active',
-            createdAt: new Date().toISOString()
-          };
-          STATE.historyLogs.push(entry);
-          if (STATE.dbConnected && historyRef) {
-            historyRef.child(r.id).set(entry);
-          }
-          changed = true;
-        }
-      });
-      if (changed) {
-        localStorage.setItem('chromebook_history_logs', JSON.stringify(STATE.historyLogs));
-      }
-    }
-
-    function recordHistoryEntry(id, data, status = 'active') {
-      const existingIdx = STATE.historyLogs.findIndex(h => h.id === id);
-      const entry = {
-        ...(existingIdx !== -1 ? STATE.historyLogs[existingIdx] : {}),
-        ...data,
-        id,
-        status,
-        updatedAt: new Date().toISOString()
-      };
-      if (status === 'deleted') {
-        entry.deletedAt = new Date().toISOString();
-      }
-
-      if (existingIdx !== -1) {
-        STATE.historyLogs[existingIdx] = entry;
-      } else {
-        STATE.historyLogs.push(entry);
-      }
-      localStorage.setItem('chromebook_history_logs', JSON.stringify(STATE.historyLogs));
-
-      if (STATE.dbConnected && historyRef) {
-        historyRef.child(id).set(entry);
-      }
-    }
-
-    function getCurrentStock() {
-      return STATE.deviceType === 'tablet' ? STATE.totalStockTablet : STATE.totalStockChromebook;
-    }
-
-    function updateDeviceUI() {
-      const isTablet = STATE.deviceType === 'tablet';
-      const deviceHeaderIcon = document.getElementById('headerDeviceIcon');
-      if (deviceHeaderIcon) {
-        deviceHeaderIcon.className = isTablet
-          ? 'fa-solid fa-tablet-screen-button text-blue-600 text-base'
-          : 'fa-solid fa-laptop text-blue-600 text-base';
-      }
-      const badgeIcon = document.getElementById('badgeStockIcon');
-      if (badgeIcon) badgeIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button text-blue-600' : 'fa-solid fa-laptop text-blue-600';
-      const detailIcon = document.getElementById('detailModalIcon');
-      if (detailIcon) detailIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button' : 'fa-solid fa-laptop';
-
-      const modalIconClass = isTablet ? 'fa-tablet-screen-button' : 'fa-calendar-plus';
-      const deviceLabel = isTablet ? 'Tablets' : 'Chromebooks';
-      document.getElementById('modalBookingTitle').innerHTML = `<i class="fa-solid ${modalIconClass} text-blue-600"></i> Agendar ${deviceLabel}`;
-      document.getElementById('displayTotalStock').innerText = getCurrentStock();
-      document.getElementById('deviceTypeSelect').value = STATE.deviceType;
-
-      STATE.reservations = STATE.allReservations.filter(r => (r.deviceType || 'chromebook') === STATE.deviceType);
-      renderCurrentView();
-      updateLiveUsageStats();
-    }
-
-    function applyBranding(branding) {
-      if (!branding) return;
-      const logoImg = document.getElementById('headerLogoImg');
-      const logoIcon = document.getElementById('headerLogoIcon');
-      if (branding.logoUrl && branding.logoUrl.trim() !== "") {
-        logoImg.src = branding.logoUrl;
-        logoImg.classList.remove('hidden');
-        logoIcon.classList.add('hidden');
-      } else {
-        logoImg.classList.add('hidden');
-        logoIcon.classList.remove('hidden');
-      }
-
-      if (branding.faviconUrl && branding.faviconUrl.trim() !== "") {
-        const favicon = document.getElementById('dynamicFavicon');
-        if (favicon) favicon.href = branding.faviconUrl;
-      }
-
-      const subTitleEl = document.getElementById('headerSubTitle');
-      if (subTitleEl && branding.schoolTitle) {
-        subTitleEl.innerText = branding.schoolTitle;
-      }
-
-      const footerEl = document.getElementById('sidebarFooterText');
-      if (footerEl && branding.footerText) {
-        footerEl.innerText = branding.footerText;
-      }
-    }
-
-    function showToast(msg, isSuccess = true) {
-      const toast = document.getElementById('toastNotification');
-      const icon = document.getElementById('toastIcon');
-      document.getElementById('toastMessage').innerText = msg;
-
-      if (isSuccess) {
-        toast.className = "fixed bottom-4 right-4 z-[80] transform translate-y-0 opacity-100 transition-all duration-300 ease-in-out flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-emerald-600 shadow-xl";
-        icon.className = "fa-solid fa-circle-check text-base";
-      } else {
-        toast.className = "fixed bottom-4 right-4 z-[80] transform translate-y-0 opacity-100 transition-all duration-300 ease-in-out flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-amber-600 shadow-xl";
-        icon.className = "fa-solid fa-triangle-exclamation text-base";
-      }
-
-      setTimeout(() => {
-        toast.className = "fixed bottom-4 right-4 z-[80] transform translate-y-20 opacity-0 transition-all duration-300 ease-in-out flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white shadow-xl pointer-events-none";
-      }, 3500);
-    }
 
     function initFirebase() {
       let config = window.firebaseConfig || {};
@@ -827,21 +1000,17 @@
           historyRef = firebase.database().ref('history_logs');
           settingsRef = firebase.database().ref('settings');
 
-          // Monitora conexão real com o Firebase (.info/connected)
+          // Monitora o estado real da conexão com o Firebase
           firebase.database().ref('.info/connected').on('value', (snap) => {
             const isOnline = snap.val() === true;
             STATE.dbConnected = isOnline;
             updateStatusBadge(isOnline);
           });
 
+          // Escuta alterações nas reservas ativas
           dbRef.on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data) {
-              STATE.allReservations = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-            } else {
-              STATE.allReservations = [];
-            }
-
+            STATE.allReservations = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
             syncActiveToHistoryLogs();
             updateDeviceUI();
             if (STATE.isAdmin) {
@@ -850,6 +1019,7 @@
             }
           });
 
+          // Escuta o histórico permanente
           historyRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -859,6 +1029,7 @@
             }
           });
 
+          // Escuta configurações globais (Branding, Estoques, Senha Admin, Unidades e Feriados)
           settingsRef.on('value', (snapshot) => {
             const settings = snapshot.val();
             if (settings) {
@@ -879,6 +1050,20 @@
                 STATE.adminPasswordHash = settings.adminPasswordHash;
                 localStorage.setItem('chromebook_admin_hash', settings.adminPasswordHash);
               }
+              if (settings.unitsData) {
+                STATE.unitsData = {
+                  unit1: { salas: settings.unitsData.unit1?.salas || [], turmas: settings.unitsData.unit1?.turmas || [] },
+                  unit2: { salas: settings.unitsData.unit2?.salas || [], turmas: settings.unitsData.unit2?.turmas || [] }
+                };
+                localStorage.setItem('chromebook_units_data', JSON.stringify(STATE.unitsData));
+                if (STATE.isAdmin) renderAdminUnitsLists();
+              }
+              if (settings.customHolidays !== undefined) {
+                STATE.customHolidays = settings.customHolidays || [];
+                localStorage.setItem('chromebook_custom_holidays', JSON.stringify(STATE.customHolidays));
+                if (STATE.isAdmin) renderAdminHolidaysTables();
+                renderCurrentView();
+              }
               document.getElementById('displayTotalStock').innerText = getCurrentStock();
               updateLiveUsageStats();
             }
@@ -892,7 +1077,152 @@
       }
     }
 
-    // ÍCONE DISCRETO DE STATUS DA NUVEM (VERDE OK OU NUVEM CORTADA VERMELHA)
+    // =========================================================================
+    // MÓDULO 4: HISTÓRICO PERMANENTE (ESPELHAMENTO DE ATIVOS E EXCLUÍDOS)
+    // =========================================================================
+    function syncActiveToHistoryLogs() {
+      let changed = false;
+      STATE.allReservations.forEach(r => {
+        const exists = STATE.historyLogs.find(h => h.id === r.id);
+        if (!exists) {
+          const entry = {
+            id: r.id,
+            professor: r.professor,
+            sala: r.sala,
+            turma: r.turma,
+            date: r.date,
+            startTime: r.startTime,
+            endTime: r.endTime,
+            quantity: r.quantity,
+            deviceType: r.deviceType || 'chromebook',
+            status: 'active',
+            createdAt: new Date().toISOString()
+          };
+          STATE.historyLogs.push(entry);
+          if (STATE.dbConnected && historyRef) historyRef.child(r.id).set(entry);
+          changed = true;
+        }
+      });
+      if (changed) localStorage.setItem('chromebook_history_logs', JSON.stringify(STATE.historyLogs));
+    }
+
+    function recordHistoryEntry(id, data, status = 'active') {
+      const existingIdx = STATE.historyLogs.findIndex(h => h.id === id);
+      const entry = {
+        ...(existingIdx !== -1 ? STATE.historyLogs[existingIdx] : {}),
+        ...data,
+        id,
+        status,
+        updatedAt: new Date().toISOString()
+      };
+      if (status === 'deleted') entry.deletedAt = new Date().toISOString();
+
+      if (existingIdx !== -1) STATE.historyLogs[existingIdx] = entry;
+      else STATE.historyLogs.push(entry);
+
+      localStorage.setItem('chromebook_history_logs', JSON.stringify(STATE.historyLogs));
+      if (STATE.dbConnected && historyRef) historyRef.child(id).set(entry);
+    }
+
+    // =========================================================================
+    // MÓDULO 5: INTERFACE DO USUÁRIO, UNIDADES E STATUS DE CONEXÃO
+    // =========================================================================
+    function getCurrentStock() {
+      return STATE.deviceType === 'tablet' ? STATE.totalStockTablet : STATE.totalStockChromebook;
+    }
+
+    function updateDeviceUI() {
+      const isTablet = STATE.deviceType === 'tablet';
+      const deviceHeaderIcon = document.getElementById('headerDeviceIcon');
+      if (deviceHeaderIcon) {
+        deviceHeaderIcon.className = isTablet
+          ? 'fa-solid fa-tablet-screen-button text-blue-600 text-base'
+          : 'fa-solid fa-laptop text-blue-600 text-base';
+      }
+      const badgeIcon = document.getElementById('badgeStockIcon');
+      if (badgeIcon) badgeIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button text-blue-600' : 'fa-solid fa-laptop text-blue-600';
+      const detailIcon = document.getElementById('detailModalIcon');
+      if (detailIcon) detailIcon.className = isTablet ? 'fa-solid fa-tablet-screen-button' : 'fa-solid fa-laptop';
+
+      const modalIconClass = isTablet ? 'fa-tablet-screen-button' : 'fa-calendar-plus';
+      const deviceLabel = isTablet ? 'Tablets (Unidade 2)' : 'Chromebooks (Unidade 1)';
+      document.getElementById('modalBookingTitle').innerHTML = `<i class="fa-solid ${modalIconClass} text-blue-600"></i> Agendar ${deviceLabel}`;
+      document.getElementById('displayTotalStock').innerText = getCurrentStock();
+      document.getElementById('deviceTypeSelect').value = STATE.deviceType;
+
+      // Atualiza datalists de Salas e Turmas de acordo com a Unidade selecionada
+      populateUnitDatalists();
+
+      STATE.reservations = STATE.allReservations.filter(r => (r.deviceType || 'chromebook') === STATE.deviceType);
+      renderCurrentView();
+      updateLiveUsageStats();
+    }
+
+    // Carrega salas e turmas da Unidade 1 (Chromebook) ou Unidade 2 (Tablet) no modal
+    function populateUnitDatalists() {
+      const isTablet = STATE.deviceType === 'tablet';
+      const unitKey = isTablet ? 'unit2' : 'unit1';
+      const unitLabel = isTablet ? 'Unidade 2' : 'Unidade 1';
+
+      const unitSalaBadge = document.getElementById('unitSalaBadge');
+      const unitTurmaBadge = document.getElementById('unitTurmaBadge');
+      if (unitSalaBadge) unitSalaBadge.innerText = unitLabel;
+      if (unitTurmaBadge) unitTurmaBadge.innerText = unitLabel;
+
+      const salasList = document.getElementById('unitSalasList');
+      const turmasList = document.getElementById('unitTurmasList');
+      if (!salasList || !turmasList) return;
+
+      const salas = STATE.unitsData[unitKey]?.salas || [];
+      const turmas = STATE.unitsData[unitKey]?.turmas || [];
+
+      salasList.innerHTML = salas.map(s => `<option value="${s}"></option>`).join('');
+      turmasList.innerHTML = turmas.map(t => `<option value="${t}"></option>`).join('');
+    }
+
+    function applyBranding(branding) {
+      if (!branding) return;
+      const logoImg = document.getElementById('headerLogoImg');
+      const logoIcon = document.getElementById('headerLogoIcon');
+      if (branding.logoUrl && branding.logoUrl.trim() !== "") {
+        logoImg.src = branding.logoUrl;
+        logoImg.classList.remove('hidden');
+        logoIcon.classList.add('hidden');
+      } else {
+        logoImg.classList.add('hidden');
+        logoIcon.classList.remove('hidden');
+      }
+
+      if (branding.faviconUrl && branding.faviconUrl.trim() !== "") {
+        const favicon = document.getElementById('dynamicFavicon');
+        if (favicon) favicon.href = branding.faviconUrl;
+      }
+
+      const subTitleEl = document.getElementById('headerSubTitle');
+      if (subTitleEl && branding.schoolTitle) subTitleEl.innerText = branding.schoolTitle;
+
+      const footerEl = document.getElementById('sidebarFooterText');
+      if (footerEl && branding.footerText) footerEl.innerText = branding.footerText;
+    }
+
+    function showToast(msg, isSuccess = true) {
+      const toast = document.getElementById('toastNotification');
+      const icon = document.getElementById('toastIcon');
+      document.getElementById('toastMessage').innerText = msg;
+
+      if (isSuccess) {
+        toast.className = "fixed bottom-4 right-4 z-[80] transform translate-y-0 opacity-100 transition-all duration-300 ease-in-out flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-emerald-600 shadow-xl";
+        icon.className = "fa-solid fa-circle-check text-base";
+      } else {
+        toast.className = "fixed bottom-4 right-4 z-[80] transform translate-y-0 opacity-100 transition-all duration-300 ease-in-out flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-amber-600 shadow-xl";
+        icon.className = "fa-solid fa-triangle-exclamation text-base";
+      }
+
+      setTimeout(() => {
+        toast.className = "fixed bottom-4 right-4 z-[80] transform translate-y-20 opacity-0 transition-all duration-300 ease-in-out flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white shadow-xl pointer-events-none";
+      }, 3500);
+    }
+
     function updateStatusBadge(connected) {
       const indicator = document.getElementById('dbStatusIndicator');
       const adminStatus = document.getElementById('adminFbStatusText');
@@ -942,12 +1272,15 @@
       });
     }
 
+    // =========================================================================
+    // MÓDULO 6: CONFIGURAÇÃO DE EVENTOS (LISTENERS)
+    // =========================================================================
     function setupEventListeners() {
       document.getElementById('deviceTypeSelect').addEventListener('change', (e) => {
         STATE.deviceType = e.target.value;
         localStorage.setItem('chromebook_device_type', STATE.deviceType);
         updateDeviceUI();
-        showToast(`Exibindo agendamentos de: ${STATE.deviceType === 'tablet' ? 'Tablets' : 'Chromebooks'}`);
+        showToast(`Exibindo: ${STATE.deviceType === 'tablet' ? 'Tablets (Unidade 2)' : 'Chromebooks (Unidade 1)'}`);
       });
 
       const sidebar = document.getElementById('sidebar');
@@ -1002,7 +1335,7 @@
         renderCurrentView();
       });
 
-      // MODAL PAINEL ADMIN + TECLA ENTER PARA ENTRAR
+      // Painel Admin + Tecla Enter
       document.getElementById('btnOpenAdmin').addEventListener('click', openAdminModal);
       document.getElementById('btnCloseAdmin').addEventListener('click', closeAdminModal);
       document.getElementById('btnLoginAdmin').addEventListener('click', performAdminLogin);
@@ -1014,11 +1347,12 @@
       });
       document.getElementById('btnLogoutAdmin').addEventListener('click', performAdminLogout);
       document.getElementById('tabAdminConfig').addEventListener('click', () => switchAdminTab('config'));
+      document.getElementById('tabAdminHolidays').addEventListener('click', () => switchAdminTab('holidays'));
       document.getElementById('tabAdminList').addEventListener('click', () => switchAdminTab('list'));
       document.getElementById('tabAdminHistory').addEventListener('click', () => switchAdminTab('history'));
       document.getElementById('tabAdminFirebase').addEventListener('click', () => switchAdminTab('firebase'));
 
-      // SALVAR BRANDING
+      // Salvar Branding
       document.getElementById('btnSaveAdminBranding').addEventListener('click', async () => {
         let logoUrl = document.getElementById('inputAdminLogoUrl').value.trim();
         let faviconUrl = document.getElementById('inputAdminFaviconUrl').value.trim();
@@ -1041,13 +1375,11 @@
         localStorage.setItem('chromebook_branding', JSON.stringify(branding));
         applyBranding(branding);
 
-        if (STATE.dbConnected && settingsRef) {
-          settingsRef.child('branding').set(branding);
-        }
-        showToast("Personalização, Imagens e Textos salvos!");
+        if (STATE.dbConnected && settingsRef) settingsRef.child('branding').set(branding);
+        showToast("Personalização salva com sucesso!");
       });
 
-      // Salvar Estoque Chromebooks
+      // Estoque Chromebooks & Tablets
       document.getElementById('btnSaveStockChromebook').addEventListener('click', () => {
         const val = parseInt(document.getElementById('inputAdminStockChromebook').value);
         if (val && val > 0) {
@@ -1055,13 +1387,12 @@
           localStorage.setItem('stock_chromebook', val);
           if (STATE.dbConnected && settingsRef) settingsRef.child('totalStockChromebook').set(val);
           document.getElementById('displayTotalStock').innerText = getCurrentStock();
-          showToast("Estoque de Chromebooks atualizado para " + val + " unidades!");
+          showToast("Estoque de Chromebooks atualizado para " + val + "!");
           renderCurrentView();
           updateLiveUsageStats();
         }
       });
 
-      // Salvar Estoque Tablets
       document.getElementById('btnSaveStockTablet').addEventListener('click', () => {
         const val = parseInt(document.getElementById('inputAdminStockTablet').value);
         if (val && val > 0) {
@@ -1069,22 +1400,20 @@
           localStorage.setItem('stock_tablet', val);
           if (STATE.dbConnected && settingsRef) settingsRef.child('totalStockTablet').set(val);
           document.getElementById('displayTotalStock').innerText = getCurrentStock();
-          showToast("Estoque de Tablets atualizado para " + val + " unidades!");
+          showToast("Estoque de Tablets atualizado para " + val + "!");
           renderCurrentView();
           updateLiveUsageStats();
         }
       });
 
-      // ALTERAR SENHA DO ADMIN COM CRIPTOGRAFIA
+      // Senha do Admin
       document.getElementById('btnSaveAdminPass').addEventListener('click', async () => {
         const pass = document.getElementById('inputNewAdminPass').value.trim();
         if (pass.length >= 4) {
           const passHash = await hashText(pass);
           STATE.adminPasswordHash = passHash;
           localStorage.setItem('chromebook_admin_hash', passHash);
-          if (STATE.dbConnected && settingsRef) {
-            settingsRef.child('adminPasswordHash').set(passHash);
-          }
+          if (STATE.dbConnected && settingsRef) settingsRef.child('adminPasswordHash').set(passHash);
           showToast("Senha do Admin criptografada e salva!");
           document.getElementById('inputNewAdminPass').value = "";
         } else {
@@ -1092,6 +1421,7 @@
         }
       });
 
+      // Configuração Firebase
       document.getElementById('btnSaveFirebaseConfig').addEventListener('click', () => {
         const config = {
           apiKey: document.getElementById('fbApiKey').value.trim(),
@@ -1105,6 +1435,7 @@
         setTimeout(() => window.location.reload(), 1000);
       });
 
+      // Controle Recorrência
       document.getElementById('inputRecurrenceType').addEventListener('change', (e) => {
         const val = e.target.value;
         const periodBox = document.getElementById('recurrencePeriodBox');
@@ -1118,7 +1449,7 @@
         }
       });
 
-      // MODAL CANCELAMENTO
+      // Cancelamento
       document.getElementById('btnCancelSingleOnly').addEventListener('click', () => {
         if (pendingCancelBookingId) {
           deleteBookingData(pendingCancelBookingId, 'single');
@@ -1143,17 +1474,16 @@
         }
       });
 
-      document.getElementById('btnAbortCancel').addEventListener('click', () => {
-        closeCancelModal();
-      });
+      document.getElementById('btnAbortCancel').addEventListener('click', closeCancelModal);
 
-      // Form Reserva
+      // Modal Reserva e Detalhes
       document.getElementById('btnOpenNewModal').addEventListener('click', () => openBookingModal());
       document.getElementById('btnOpenNewModalMobile').addEventListener('click', () => openBookingModal());
       document.getElementById('btnCloseModal').addEventListener('click', closeBookingModal);
       document.getElementById('btnCancelModal').addEventListener('click', closeBookingModal);
       document.getElementById('btnCloseDetails').addEventListener('click', closeDetailsModal);
       document.getElementById('btnDeleteDetail').addEventListener('click', handleDeleteFromDetails);
+      document.getElementById('btnDuplicateDetail').addEventListener('click', handleDuplicateFromDetails);
       document.getElementById('btnEditDetail').addEventListener('click', handleEditFromDetails);
 
       ['inputDate', 'inputStartTime', 'inputEndTime', 'inputQty'].forEach(id => {
@@ -1166,7 +1496,139 @@
       });
     }
 
-    // VALIDAÇÃO DE DATA/HORA PASSADA
+    // =========================================================================
+    // MÓDULO 7: GESTÃO DE UNIDADES (SALAS/TURMAS) E FERIADOS NO PAINEL ADMIN
+    // =========================================================================
+    function renderAdminUnitsLists() {
+      const renderChips = (unitKey, field, containerId) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const items = STATE.unitsData[unitKey]?.[field] || [];
+        if (items.length === 0) {
+          container.innerHTML = `<span class="text-[10px] text-slate-400 italic">Nenhum item cadastrado.</span>`;
+          return;
+        }
+        container.innerHTML = items.map((item, idx) => `
+          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-900 font-semibold text-[11px]">
+            ${item}
+            <button type="button" onclick="removeUnitItem('${unitKey}', '${field}', ${idx})" class="text-indigo-500 hover:text-rose-600 font-bold" title="Remover">×</button>
+          </span>
+        `).join('');
+      };
+
+      renderChips('unit1', 'salas', 'listSalasU1');
+      renderChips('unit1', 'turmas', 'listTurmasU1');
+      renderChips('unit2', 'salas', 'listSalasU2');
+      renderChips('unit2', 'turmas', 'listTurmasU2');
+    }
+
+    function addUnitItem(unitKey, field, inputId) {
+      const input = document.getElementById(inputId);
+      const val = input.value.trim();
+      if (!val) return;
+
+      if (!STATE.unitsData[unitKey]) STATE.unitsData[unitKey] = { salas: [], turmas: [] };
+      if (!STATE.unitsData[unitKey][field].includes(val)) {
+        STATE.unitsData[unitKey][field].push(val);
+        STATE.unitsData[unitKey][field].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+        saveUnitsData();
+        renderAdminUnitsLists();
+        populateUnitDatalists();
+      }
+      input.value = "";
+      input.focus();
+    }
+
+    function removeUnitItem(unitKey, field, index) {
+      STATE.unitsData[unitKey][field].splice(index, 1);
+      saveUnitsData();
+      renderAdminUnitsLists();
+      populateUnitDatalists();
+    }
+
+    function saveUnitsData() {
+      localStorage.setItem('chromebook_units_data', JSON.stringify(STATE.unitsData));
+      if (STATE.dbConnected && settingsRef) {
+        settingsRef.child('unitsData').set(STATE.unitsData);
+      }
+      showToast("Lista da unidade atualizada!");
+    }
+
+    // Feriados e Recessos no Painel Admin
+    function renderAdminHolidaysTables() {
+      const currentYear = new Date().getFullYear();
+      const yearLabel = document.getElementById('currentYearLabel');
+      if (yearLabel) yearLabel.innerText = currentYear;
+
+      const nationalBody = document.getElementById('nationalHolidaysTableBody');
+      if (nationalBody) {
+        const nationals = getNationalHolidaysForYear(currentYear);
+        nationalBody.innerHTML = nationals.map(h => `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2.5 font-bold text-slate-700 whitespace-nowrap">${new Date(h.date + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+            <td class="p-2.5 text-slate-600">${h.name}</td>
+          </tr>
+        `).join('');
+      }
+
+      const customBody = document.getElementById('customHolidaysTableBody');
+      if (customBody) {
+        const customs = [...(STATE.customHolidays || [])].sort((a, b) => a.date.localeCompare(b.date));
+        if (customs.length === 0) {
+          customBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-slate-400">Nenhum recesso ou emenda cadastrado.</td></tr>`;
+        } else {
+          customBody.innerHTML = customs.map((h, idx) => `
+            <tr class="hover:bg-slate-50">
+              <td class="p-2.5 font-bold text-rose-700 whitespace-nowrap">${new Date(h.date + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+              <td class="p-2.5 text-slate-700 font-medium">${h.name}</td>
+              <td class="p-2.5 text-right">
+                <button type="button" onclick="removeCustomHoliday('${h.date}')" class="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded">Remover</button>
+              </td>
+            </tr>
+          `).join('');
+        }
+      }
+    }
+
+    function addCustomHoliday() {
+      const dateVal = document.getElementById('inputCustomHolidayDate').value;
+      const nameVal = document.getElementById('inputCustomHolidayName').value.trim() || 'Recesso / Emenda Escolar';
+      if (!dateVal) {
+        alert("Selecione a data do recesso ou emenda.");
+        return;
+      }
+      if (!STATE.customHolidays) STATE.customHolidays = [];
+      const existsIdx = STATE.customHolidays.findIndex(h => h.date === dateVal);
+      if (existsIdx !== -1) {
+        STATE.customHolidays[existsIdx].name = nameVal;
+      } else {
+        STATE.customHolidays.push({ date: dateVal, name: nameVal });
+      }
+      localStorage.setItem('chromebook_custom_holidays', JSON.stringify(STATE.customHolidays));
+      if (STATE.dbConnected && settingsRef) {
+        settingsRef.child('customHolidays').set(STATE.customHolidays);
+      }
+      document.getElementById('inputCustomHolidayDate').value = "";
+      document.getElementById('inputCustomHolidayName').value = "";
+      renderAdminHolidaysTables();
+      renderCurrentView();
+      showToast("Recesso/Emenda bloqueado na agenda!");
+    }
+
+    function removeCustomHoliday(dateStr) {
+      STATE.customHolidays = (STATE.customHolidays || []).filter(h => h.date !== dateStr);
+      localStorage.setItem('chromebook_custom_holidays', JSON.stringify(STATE.customHolidays));
+      if (STATE.dbConnected && settingsRef) {
+        settingsRef.child('customHolidays').set(STATE.customHolidays);
+      }
+      renderAdminHolidaysTables();
+      renderCurrentView();
+      showToast("Bloqueio removido!");
+    }
+
+    // =========================================================================
+    // MÓDULO 8: VALIDAÇÕES DE HORÁRIO, ESTOQUE E MODAL DE RESERVAS
+    // =========================================================================
     function isPastDateTime(dateStr, timeStr = null) {
       const now = new Date();
       const todayStr = formatDateIso(now);
@@ -1187,10 +1649,7 @@
         let h = now.getHours();
         let m = now.getMinutes();
         m = Math.ceil((m + 1) / 15) * 15;
-        if (m >= 60) {
-          h++;
-          m = 0;
-        }
+        if (m >= 60) { h++; m = 0; }
         if (h < START_HOUR) return "07:30";
         if (h >= END_HOUR) return `${END_HOUR - 1}:30`;
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
@@ -1198,6 +1657,599 @@
       return "07:30";
     }
 
+    function getPeakUsageInInterval(dateStr, startTimeStr, endTimeStr, ignoreId = null) {
+      const reqStart = timeToMinutes(startTimeStr);
+      const reqEnd = timeToMinutes(endTimeStr);
+      if (reqEnd <= reqStart) return { maxUsed: 0, isValidTime: false };
+
+      const dayBookings = STATE.reservations.filter(r => r.date === dateStr && r.id !== ignoreId);
+      let maxConcurrent = 0;
+
+      for (let t = reqStart; t < reqEnd; t++) {
+        let currentUsed = 0;
+        dayBookings.forEach(r => {
+          if (t >= timeToMinutes(r.startTime) && t < timeToMinutes(r.endTime)) {
+            currentUsed += parseInt(r.quantity);
+          }
+        });
+        if (currentUsed > maxConcurrent) maxConcurrent = currentUsed;
+      }
+      return { maxUsed: maxConcurrent, isValidTime: true };
+    }
+
+    function validateStockInModal() {
+      const dateStr = document.getElementById('inputDate').value;
+      const startStr = document.getElementById('inputStartTime').value;
+      const endStr = document.getElementById('inputEndTime').value;
+      const qty = parseInt(document.getElementById('inputQty').value) || 0;
+      const editId = document.getElementById('inputEditId').value;
+      const badge = document.getElementById('stockCheckBadge');
+      const holidayBadge = document.getElementById('holidayWarningBadge');
+      const submitBtn = document.getElementById('btnSaveBooking');
+
+      // Verifica se a data escolhida é feriado ou recesso
+      const holiday = getHolidayInfo(dateStr);
+      if (holiday) {
+        holidayBadge.innerText = `${holiday.type}: ${holiday.name}`;
+        holidayBadge.classList.remove('hidden');
+        if (!STATE.isAdmin) {
+          badge.innerText = "Data bloqueada (Sem aula)";
+          badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+          submitBtn.disabled = true;
+          return;
+        }
+      } else {
+        holidayBadge.classList.add('hidden');
+      }
+
+      if (!dateStr || !startStr || !endStr) {
+        badge.innerText = "Informe o horário";
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600";
+        return;
+      }
+
+      // Exceção para edição de agendamento já iniciado
+      const existingBooking = editId ? STATE.allReservations.find(r => r.id === editId) : null;
+      const isEditingOngoing = existingBooking &&
+        existingBooking.date === dateStr &&
+        existingBooking.startTime === startStr &&
+        !isPastDateTime(dateStr, endStr);
+
+      if (!STATE.isAdmin && !isEditingOngoing && isPastDateTime(dateStr, startStr)) {
+        badge.innerText = "Horário já passou";
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        submitBtn.disabled = true;
+        return;
+      }
+
+      if (!STATE.isAdmin && isPastDateTime(dateStr, endStr)) {
+        badge.innerText = "Término já passou";
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        submitBtn.disabled = true;
+        return;
+      }
+
+      const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startStr, endStr, editId);
+      if (!isValidTime) {
+        badge.innerText = "Horário Inválido";
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        submitBtn.disabled = true;
+        return;
+      }
+
+      const currentStock = getCurrentStock();
+      const available = currentStock - maxUsed;
+
+      if (qty > available) {
+        badge.innerText = `Indisponível! Restam ${available}`;
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
+        submitBtn.disabled = true;
+      } else {
+        badge.innerText = `Livre: ${available} de ${currentStock}`;
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700";
+        submitBtn.disabled = false;
+      }
+    }
+
+    // Abre modal para Novo, Edição ou Duplicação
+    function openBookingModal(defaultStart = null, defaultDate = null, bookingToEdit = null, bookingToDuplicate = null) {
+      const targetDateCheck = bookingToEdit ? bookingToEdit.date : (defaultDate || formatDateIso(STATE.currentDate));
+      const holiday = getHolidayInfo(targetDateCheck);
+
+      if (!bookingToEdit && !bookingToDuplicate && !STATE.isAdmin) {
+        if (holiday) {
+          showToast(`Data bloqueada (${holiday.name}).`, false);
+          return;
+        }
+        if (isPastDateTime(targetDateCheck, defaultStart)) {
+          showToast("Não é permitido agendar para datas ou horários que já passaram.", false);
+          return;
+        }
+      }
+
+      document.getElementById('formBooking').reset();
+      populateUnitDatalists();
+
+      const recurrenceBox = document.getElementById('recurrenceBox');
+      const deviceLabel = STATE.deviceType === 'tablet' ? 'Tablets (Unidade 2)' : 'Chromebooks (Unidade 1)';
+      const inputDateEl = document.getElementById('inputDate');
+      const inputPinEl = document.getElementById('inputPin');
+      const pinLabelEl = document.getElementById('pinLabel');
+      const pinHelperEl = document.getElementById('pinHelperText');
+
+      if (!STATE.isAdmin) inputDateEl.min = formatDateIso(new Date());
+      else inputDateEl.removeAttribute('min');
+
+      if (bookingToEdit) {
+        // Modo Edição
+        document.getElementById('modalBookingTitle').innerText = `Editar Agendamento - ${deviceLabel}`;
+        document.getElementById('inputEditId').value = bookingToEdit.id;
+        document.getElementById('inputProf').value = bookingToEdit.professor;
+        document.getElementById('inputSala').value = bookingToEdit.sala;
+        document.getElementById('inputTurma').value = bookingToEdit.turma;
+        inputDateEl.value = bookingToEdit.date;
+        document.getElementById('inputStartTime').value = bookingToEdit.startTime;
+        document.getElementById('inputEndTime').value = bookingToEdit.endTime;
+        document.getElementById('inputQty').value = bookingToEdit.quantity;
+
+        inputPinEl.value = "";
+        inputPinEl.required = false;
+        pinLabelEl.innerText = "Alterar PIN de Segurança (Opcional)";
+        pinHelperEl.innerText = "Deixe em branco para manter o PIN original ou digite 4 dígitos para substituí-lo.";
+        recurrenceBox.classList.add('hidden');
+
+      } else if (bookingToDuplicate) {
+        // Modo Duplicar Agendamento
+        document.getElementById('modalBookingTitle').innerText = `Duplicar Agendamento - ${deviceLabel}`;
+        document.getElementById('inputEditId').value = "";
+        document.getElementById('inputProf').value = bookingToDuplicate.professor;
+        document.getElementById('inputSala').value = bookingToDuplicate.sala;
+        document.getElementById('inputTurma').value = bookingToDuplicate.turma;
+
+        // Sugere a data atual selecionada no calendário (ou hoje se for passada)
+        const todayIso = formatDateIso(new Date());
+        const calDate = formatDateIso(STATE.currentDate);
+        inputDateEl.value = (!STATE.isAdmin && calDate < todayIso) ? todayIso : calDate;
+        document.getElementById('inputStartTime').value = bookingToDuplicate.startTime;
+        document.getElementById('inputEndTime').value = bookingToDuplicate.endTime;
+        document.getElementById('inputQty').value = bookingToDuplicate.quantity;
+
+        recurrenceBox.classList.remove('hidden');
+        document.getElementById('inputRecurrenceType').value = 'none';
+        document.getElementById('recurrencePeriodBox').classList.add('hidden');
+        document.getElementById('recurrenceHelpText').classList.add('hidden');
+
+        inputPinEl.value = "";
+        inputPinEl.required = true;
+        pinLabelEl.innerText = "PIN de Segurança (4 dígitos) *";
+        pinHelperEl.innerText = "Defina o PIN de 4 dígitos para esta nova reserva duplicada.";
+
+      } else {
+        // Modo Novo Agendamento
+        recurrenceBox.classList.remove('hidden');
+        document.getElementById('inputRecurrenceType').value = 'none';
+        document.getElementById('recurrencePeriodBox').classList.add('hidden');
+        document.getElementById('recurrenceHelpText').classList.add('hidden');
+        document.getElementById('modalBookingTitle').innerText = `Novo Agendamento - ${deviceLabel}`;
+        document.getElementById('inputEditId').value = "";
+
+        const todayIso = formatDateIso(new Date());
+        const targetDate = (!STATE.isAdmin && targetDateCheck < todayIso) ? todayIso : targetDateCheck;
+        inputDateEl.value = targetDate;
+
+        const smartStart = defaultStart || getSmartDefaultTime(targetDate);
+        document.getElementById('inputStartTime').value = smartStart;
+        const startMin = timeToMinutes(smartStart);
+        const endMin = Math.min(startMin + 50, END_HOUR * 60);
+        document.getElementById('inputEndTime').value = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+        document.getElementById('inputQty').value = 25;
+
+        inputPinEl.value = "";
+        inputPinEl.required = true;
+        pinLabelEl.innerText = "PIN de Segurança (4 dígitos) *";
+        pinHelperEl.innerText = "Será salvo de forma criptografada (SHA-256) para sua privacidade.";
+      }
+
+      document.getElementById('modalBooking').classList.remove('hidden');
+      validateStockInModal();
+    }
+
+    function closeBookingModal() {
+      document.getElementById('modalBooking').classList.add('hidden');
+    }
+
+    // =========================================================================
+    // MÓDULO 9: RECORRÊNCIA, FEEDBACK DE CONFLITO E SALVAMENTO
+    // =========================================================================
+    function generateRecurrenceDates(startDateStr, type, periodVal) {
+      const dates = [];
+      const baseDate = new Date(startDateStr + 'T00:00:00');
+      const year = baseDate.getFullYear();
+      const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+      let maxOccurrences = 52;
+      let isUntilEndOfYear = (periodVal === 'end_of_year');
+
+      if (!isUntilEndOfYear) maxOccurrences = parseInt(periodVal) || 4;
+
+      let current = new Date(baseDate);
+      if (type === 'daily_workdays') {
+        let count = 0;
+        let limitDays = isUntilEndOfYear ? 365 : maxOccurrences * 5;
+        while (count < limitDays && current <= endOfYear) {
+          const day = current.getDay();
+          if (day !== 0 && day !== 6) {
+            dates.push(formatDateIso(current));
+            count++;
+            if (!isUntilEndOfYear && count >= maxOccurrences * 5) break;
+          }
+          current.setDate(current.getDate() + 1);
+        }
+      } else if (type === 'weekly') {
+        let count = 0;
+        while (count < maxOccurrences && current <= endOfYear) {
+          dates.push(formatDateIso(current));
+          count++;
+          current.setDate(current.getDate() + 7);
+        }
+      } else if (type === 'biweekly') {
+        let count = 0;
+        while (count < maxOccurrences && current <= endOfYear) {
+          dates.push(formatDateIso(current));
+          count++;
+          current.setDate(current.getDate() + 14);
+        }
+      } else if (type === 'monthly') {
+        let count = 0;
+        while (count < maxOccurrences && current <= endOfYear) {
+          dates.push(formatDateIso(current));
+          count++;
+          current.setMonth(current.getMonth() + 1);
+        }
+      }
+      return dates;
+    }
+
+    async function saveBooking() {
+      const editId = document.getElementById('inputEditId').value;
+      const baseDate = document.getElementById('inputDate').value;
+      const startTime = document.getElementById('inputStartTime').value;
+      const endTime = document.getElementById('inputEndTime').value;
+      const quantity = parseInt(document.getElementById('inputQty').value);
+      const recurrenceType = document.getElementById('inputRecurrenceType').value;
+      const recurrencePeriod = document.getElementById('inputRecurrenceCount').value;
+
+      // Verifica feriado na data inicial
+      const baseHoliday = getHolidayInfo(baseDate);
+      if (!STATE.isAdmin && baseHoliday) {
+        alert(`Não é possível agendar em ${new Date(baseDate + 'T00:00:00').toLocaleDateString('pt-BR')} pois é ${baseHoliday.type} (${baseHoliday.name}).`);
+        return;
+      }
+
+      const existingCheck = editId ? STATE.allReservations.find(r => r.id === editId) : null;
+      const isEditingOngoing = existingCheck &&
+        existingCheck.date === baseDate &&
+        existingCheck.startTime === startTime &&
+        !isPastDateTime(baseDate, endTime);
+
+      if (!STATE.isAdmin && ((!isEditingOngoing && isPastDateTime(baseDate, startTime)) || isPastDateTime(baseDate, endTime))) {
+        alert("Não é permitido criar ou mover agendamentos para datas ou horários anteriores ao momento atual.");
+        return;
+      }
+
+      const professor = document.getElementById('inputProf').value.trim();
+      const sala = document.getElementById('inputSala').value.trim();
+      const turma = document.getElementById('inputTurma').value.trim();
+      const pinRaw = document.getElementById('inputPin').value.trim();
+
+      let pinHash = "";
+      if (editId) {
+        if (pinRaw.length === 4) pinHash = await hashText(pinRaw);
+        else if (pinRaw.length > 0 && pinRaw.length < 4) {
+          alert("Se desejar alterar o PIN, digite exatamente 4 números.");
+          return;
+        } else {
+          pinHash = existingCheck ? (existingCheck.pinHash || "") : "";
+        }
+      } else {
+        if (pinRaw.length !== 4) {
+          alert("O PIN de segurança deve conter 4 dígitos numéricos.");
+          return;
+        }
+        pinHash = await hashText(pinRaw);
+      }
+
+      let targetDates = [baseDate];
+      if (!editId && recurrenceType !== 'none') {
+        targetDates = generateRecurrenceDates(baseDate, recurrenceType, recurrencePeriod);
+      }
+
+      // Separa datas válidas, feriados pulados e datas com conflito de estoque
+      const currentStock = getCurrentStock();
+      const validDates = [];
+      const conflictDates = [];
+
+      targetDates.forEach(dateStr => {
+        const hol = getHolidayInfo(dateStr);
+        if (hol && dateStr !== baseDate) {
+          // Pula feriados futuros automaticamente na recorrência
+          return;
+        }
+        const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startTime, endTime, editId);
+        const available = currentStock - maxUsed;
+        if (!isValidTime || available < quantity) {
+          conflictDates.push({
+            dateStr,
+            formatted: new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR'),
+            available: Math.max(0, available)
+          });
+        } else {
+          validDates.push(dateStr);
+        }
+      });
+
+      // Se for agendamento único e houver conflito
+      if (targetDates.length === 1 && conflictDates.length > 0) {
+        const deviceLabel = STATE.deviceType === 'tablet' ? 'Tablets' : 'Chromebooks';
+        alert(`Não há ${deviceLabel} suficientes na data ${conflictDates[0].formatted} (restam ${conflictDates[0].available}).`);
+        return;
+      }
+
+      // Se for recorrência e houver conflito em alguma(s) data(s), abre o modal de feedback de conflito
+      if (targetDates.length > 1 && conflictDates.length > 0) {
+        pendingPartialRecurrencePayload = {
+          validDates,
+          professor,
+          sala,
+          turma,
+          startTime,
+          endTime,
+          quantity,
+          pinHash
+        };
+        openConflictModal(conflictDates, validDates);
+        return;
+      }
+
+      // Se não houve conflito, salva diretamente
+      commitBookingsToDatabase(validDates, {
+        editId,
+        existingCheck,
+        pinRaw,
+        professor,
+        sala,
+        turma,
+        startTime,
+        endTime,
+        quantity,
+        pinHash
+      });
+    }
+
+    function openConflictModal(conflictDates, validDates) {
+      document.getElementById('conflictBlockedCount').innerText = conflictDates.length;
+      document.getElementById('conflictBlockedList').innerHTML = conflictDates
+        .map(c => `<li><strong>${c.formatted}</strong> — Apenas ${c.available} disponível(is)</li>`)
+        .join('');
+
+      document.getElementById('conflictValidCount').innerText = validDates.length;
+      const confirmBtn = document.getElementById('btnConfirmPartialRecurrence');
+
+      if (validDates.length === 0) {
+        document.getElementById('conflictValidPreview').innerText = "Nenhuma data livre disponível neste período.";
+        confirmBtn.classList.add('hidden');
+      } else {
+        confirmBtn.classList.remove('hidden');
+        document.getElementById('conflictValidPreview').innerText = validDates
+          .map(d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR'))
+          .join(', ');
+      }
+
+      document.getElementById('modalRecurrenceConflict').classList.remove('hidden');
+    }
+
+    function closeConflictModal() {
+      document.getElementById('modalRecurrenceConflict').classList.add('hidden');
+      pendingPartialRecurrencePayload = null;
+    }
+
+    function confirmPartialRecurrence() {
+      if (!pendingPartialRecurrencePayload || pendingPartialRecurrencePayload.validDates.length === 0) {
+        closeConflictModal();
+        return;
+      }
+      const p = pendingPartialRecurrencePayload;
+      commitBookingsToDatabase(p.validDates, {
+        editId: null,
+        existingCheck: null,
+        pinRaw: "",
+        professor: p.professor,
+        sala: p.sala,
+        turma: p.turma,
+        startTime: p.startTime,
+        endTime: p.endTime,
+        quantity: p.quantity,
+        pinHash: p.pinHash
+      });
+      closeConflictModal();
+    }
+
+    function commitBookingsToDatabase(datesList, data) {
+      const { editId, existingCheck, pinRaw, professor, sala, turma, startTime, endTime, quantity, pinHash } = data;
+      const groupId = editId
+        ? (existingCheck ? (existingCheck.groupId || null) : null)
+        : (datesList.length > 1 ? 'group-' + Date.now() : null);
+
+      datesList.forEach(dateStr => {
+        const bookingData = {
+          professor,
+          sala,
+          turma,
+          date: dateStr,
+          startTime,
+          endTime,
+          quantity,
+          pinHash,
+          groupId,
+          deviceType: STATE.deviceType
+        };
+
+        if (editId && !pinRaw && existingCheck && !existingCheck.pinHash && existingCheck.pin) {
+          bookingData.pin = existingCheck.pin;
+        }
+
+        if (STATE.dbConnected && dbRef) {
+          if (editId) {
+            dbRef.child(editId).update(bookingData);
+            recordHistoryEntry(editId, bookingData, 'active');
+          } else {
+            const newRef = dbRef.push(bookingData);
+            recordHistoryEntry(newRef.key, bookingData, 'active');
+          }
+        } else {
+          if (editId) {
+            const idx = STATE.allReservations.findIndex(r => r.id === editId);
+            if (idx !== -1) STATE.allReservations[idx] = { id: editId, ...bookingData };
+            recordHistoryEntry(editId, bookingData, 'active');
+          } else {
+            const newId = 'res-' + Date.now() + Math.random().toString(36).substr(2, 4);
+            STATE.allReservations.push({ id: newId, ...bookingData });
+            recordHistoryEntry(newId, bookingData, 'active');
+          }
+        }
+      });
+
+      if (!STATE.dbConnected) {
+        localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
+      }
+      updateDeviceUI();
+      showToast(editId ? "Agendamento atualizado!" : (datesList.length > 1 ? `${datesList.length} agendamentos criados!` : "Agendamento salvo!"));
+      closeBookingModal();
+    }
+
+    // =========================================================================
+    // MÓDULO 10: DETALHES, DUPLICAR, EDITAR E CANCELAR RESERVAS
+    // =========================================================================
+    function openDetailsModal(bookingId) {
+      const booking = STATE.allReservations.find(r => r.id === bookingId);
+      if (!booking) return;
+      STATE.selectedBookingId = bookingId;
+      document.getElementById('detailProf').innerText = booking.professor;
+      document.getElementById('detailTime').innerText = `${booking.startTime} às ${booking.endTime}`;
+      document.getElementById('detailDate').innerText = new Date(booking.date + 'T00:00:00').toLocaleDateString('pt-BR');
+      document.getElementById('detailLocation').innerText = `${booking.sala} (${booking.turma})`;
+      const emoji = (booking.deviceType || 'chromebook') === 'tablet' ? '📱' : '💻';
+      document.getElementById('detailQty').innerText = `${emoji} ${booking.quantity} aparelhos`;
+      document.getElementById('modalDetails').classList.remove('hidden');
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('modalDetails').classList.add('hidden');
+      STATE.selectedBookingId = null;
+    }
+
+    // Duplica o agendamento selecionado sem precisar pedir PIN
+    function handleDuplicateFromDetails() {
+      const booking = STATE.allReservations.find(r => r.id === STATE.selectedBookingId);
+      if (!booking) return;
+      closeDetailsModal();
+      openBookingModal(null, null, null, booking);
+    }
+
+    async function handleEditFromDetails() {
+      const booking = STATE.allReservations.find(r => r.id === STATE.selectedBookingId);
+      if (!booking) return;
+
+      if (STATE.isAdmin) {
+        closeDetailsModal();
+        openBookingModal(null, null, booking);
+        return;
+      }
+
+      const userPin = prompt("Digite o PIN de 4 dígitos cadastrado nesta reserva:");
+      if (!userPin) return;
+      const userPinHash = await hashText(userPin);
+
+      if ((booking.pinHash && userPinHash === booking.pinHash) || (booking.pin && userPin === booking.pin)) {
+        closeDetailsModal();
+        openBookingModal(null, null, booking);
+      } else {
+        alert("PIN incorreto!");
+      }
+    }
+
+    async function handleDeleteFromDetails() {
+      const booking = STATE.allReservations.find(r => r.id === STATE.selectedBookingId);
+      if (!booking) return;
+
+      if (STATE.isAdmin) {
+        openCancelModal(booking.id);
+        return;
+      }
+
+      const userPin = prompt("Para cancelar, digite o PIN de 4 dígitos desta reserva:");
+      if (!userPin) return;
+      const userPinHash = await hashText(userPin);
+
+      if ((booking.pinHash && userPinHash === booking.pinHash) || (booking.pin && userPin === booking.pin)) {
+        openCancelModal(booking.id);
+      } else {
+        alert("PIN incorreto!");
+      }
+    }
+
+    function openCancelModal(bookingId) {
+      const booking = STATE.allReservations.find(r => r.id === bookingId);
+      if (!booking) return;
+      pendingCancelBookingId = bookingId;
+      const futureBtn = document.getElementById('btnCancelFutureSeries');
+      const textEl = document.getElementById('confirmCancelText');
+
+      if (booking.groupId) {
+        futureBtn.classList.remove('hidden');
+        textEl.innerText = `A reserva de ${booking.professor} faz parte de uma série RECORRENTE. Escolha uma das opções abaixo:`;
+      } else {
+        futureBtn.classList.add('hidden');
+        textEl.innerText = `Tem certeza que deseja cancelar a reserva de ${booking.professor}?`;
+      }
+      document.getElementById('modalConfirmCancel').classList.remove('hidden');
+    }
+
+    function closeCancelModal() {
+      document.getElementById('modalConfirmCancel').classList.add('hidden');
+      pendingCancelBookingId = null;
+    }
+
+    function deleteBookingData(id, scope = 'single') {
+      const targetBooking = STATE.allReservations.find(r => r.id === id);
+      if (!targetBooking) return;
+
+      let toDeleteIds = [id];
+      if (scope === 'future' && targetBooking.groupId) {
+        toDeleteIds = STATE.allReservations
+          .filter(r => r.groupId === targetBooking.groupId && r.date >= targetBooking.date)
+          .map(r => r.id);
+      }
+
+      // Marca como excluído no histórico permanente
+      toDeleteIds.forEach(delId => {
+        const item = STATE.allReservations.find(r => r.id === delId);
+        if (item) recordHistoryEntry(delId, item, 'deleted');
+      });
+
+      if (STATE.dbConnected && dbRef) {
+        toDeleteIds.forEach(delId => dbRef.child(delId).remove());
+        showToast(`${toDeleteIds.length} reserva(s) cancelada(s) na nuvem!`);
+      } else {
+        STATE.allReservations = STATE.allReservations.filter(r => !toDeleteIds.includes(r.id));
+        localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
+        showToast(`${toDeleteIds.length} reserva(s) removida(s) localmente!`, false);
+        updateDeviceUI();
+      }
+    }
+
+    // =========================================================================
+    // MÓDULO 11: PAINEL ADMINISTRATIVO, TABELAS E EXPORTAÇÃO EXCEL / PDF
+    // =========================================================================
     function openAdminModal() {
       document.getElementById('modalAdmin').classList.remove('hidden');
       if (STATE.isAdmin) {
@@ -1252,12 +2304,15 @@
       document.getElementById('fbDatabaseURL').value = fb.databaseURL || "";
       document.getElementById('fbProjectId').value = fb.projectId || "";
       updateStatusBadge(STATE.dbConnected);
+
+      renderAdminUnitsLists();
+      renderAdminHolidaysTables();
       renderAdminBookingsTable();
       renderAdminHistoryPanel();
     }
 
     function switchAdminTab(tabName) {
-      const tabs = ['config', 'list', 'history', 'firebase'];
+      const tabs = ['config', 'holidays', 'list', 'history', 'firebase'];
       tabs.forEach(t => {
         const btn = document.getElementById('tabAdmin' + t.charAt(0).toUpperCase() + t.slice(1));
         const panel = document.getElementById('panelAdmin' + t.charAt(0).toUpperCase() + t.slice(1));
@@ -1269,6 +2324,7 @@
           panel.classList.add('hidden');
         }
       });
+      if (tabName === 'holidays') renderAdminHolidaysTables();
       if (tabName === 'list') renderAdminBookingsTable();
       if (tabName === 'history') renderAdminHistoryPanel();
     }
@@ -1343,8 +2399,7 @@
     }
 
     function toggleSelectAllAdminBookings(master) {
-      const checkboxes = document.querySelectorAll('.admin-booking-checkbox');
-      checkboxes.forEach(cb => cb.checked = master.checked);
+      document.querySelectorAll('.admin-booking-checkbox').forEach(cb => cb.checked = master.checked);
       updateAdminBatchDeleteBtn();
     }
 
@@ -1355,9 +2410,7 @@
       const master = document.getElementById('selectAllAdminBookings');
       const total = document.querySelectorAll('.admin-booking-checkbox').length;
 
-      if (master) {
-        master.checked = (selected.length > 0 && selected.length === total);
-      }
+      if (master) master.checked = (selected.length > 0 && selected.length === total);
       if (selected.length > 0) {
         btn.classList.remove('hidden');
         countSpan.innerText = selected.length;
@@ -1372,7 +2425,6 @@
       if (ids.length === 0) return;
 
       if (confirm(`Tem certeza que deseja excluir os ${ids.length} agendamentos selecionados de uma só vez?`)) {
-        // Marca todos como excluídos no histórico antes de remover da agenda ativa
         ids.forEach(id => {
           const item = STATE.allReservations.find(r => r.id === id);
           if (item) recordHistoryEntry(id, item, 'deleted');
@@ -1453,28 +2505,19 @@
       openCancelModal(id);
     }
 
-    // ==========================================
-    // HISTÓRICO PERMANENTE, ESTATÍSTICAS & EXPORTAÇÃO
-    // ==========================================
+    // Relatórios e Exportação Excel/PDF
     function getFilteredHistoryRecords() {
       const filter = document.getElementById('historyFilterStatus')?.value || 'all';
       let logs = [...STATE.historyLogs];
-      if (filter === 'active') {
-        logs = logs.filter(l => l.status !== 'deleted');
-      } else if (filter === 'deleted') {
-        logs = logs.filter(l => l.status === 'deleted');
-      }
+      if (filter === 'active') logs = logs.filter(l => l.status !== 'deleted');
+      else if (filter === 'deleted') logs = logs.filter(l => l.status === 'deleted');
       return logs.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.startTime || '').localeCompare(a.startTime || ''));
     }
 
     function renderAdminHistoryPanel() {
       const allLogs = STATE.historyLogs;
       const weekdays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-
-      const profMap = {};
-      const turmaMap = {};
-      const slotMap = {};
-      const dayMap = {};
+      const profMap = {}, turmaMap = {}, slotMap = {}, dayMap = {};
 
       allLogs.forEach(item => {
         const prof = (item.professor || 'Não informado').trim();
@@ -1496,14 +2539,8 @@
       });
 
       const getTop = (map) => {
-        let bestKey = '---';
-        let bestVal = 0;
-        Object.entries(map).forEach(([k, v]) => {
-          if (v > bestVal) {
-            bestVal = v;
-            bestKey = k;
-          }
-        });
+        let bestKey = '---', bestVal = 0;
+        Object.entries(map).forEach(([k, v]) => { if (v > bestVal) { bestVal = v; bestKey = k; } });
         return { key: bestKey, count: bestVal };
       };
 
@@ -1566,7 +2603,7 @@
 
       const filterVal = document.getElementById('historyFilterStatus').value;
       const rows = records.map(r => ({
-        'Equipamento': (r.deviceType || 'chromebook') === 'tablet' ? 'Tablet' : 'Chromebook',
+        'Equipamento': (r.deviceType || 'chromebook') === 'tablet' ? 'Tablet (Unidade 2)' : 'Chromebook (Unidade 1)',
         'Data': r.date ? new Date(r.date + 'T00:00:00').toLocaleDateString('pt-BR') : '',
         'Início': r.startTime || '',
         'Término': r.endTime || '',
@@ -1606,7 +2643,7 @@
       doc.text(`Filtro aplicado: ${filterLabel} | Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 21);
 
       const bodyData = records.map(r => [
-        (r.deviceType || 'chromebook') === 'tablet' ? 'Tablet' : 'Chromebook',
+        (r.deviceType || 'chromebook') === 'tablet' ? 'Tablet (U2)' : 'Chromebook (U1)',
         r.date ? new Date(r.date + 'T00:00:00').toLocaleDateString('pt-BR') : '',
         `${r.startTime} - ${r.endTime}`,
         r.professor || '',
@@ -1628,6 +2665,9 @@
       showToast("Arquivo PDF gerado com sucesso!");
     }
 
+    // =========================================================================
+    // MÓDULO 12: RENDERIZAÇÃO DAS VISÕES (DIA, SEMANA, LISTA) E USO AO VIVO
+    // =========================================================================
     function formatDateIso(dateObj) {
       const y = dateObj.getFullYear();
       const m = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -1659,442 +2699,6 @@
       });
     }
 
-    function getPeakUsageInInterval(dateStr, startTimeStr, endTimeStr, ignoreId = null) {
-      const reqStart = timeToMinutes(startTimeStr);
-      const reqEnd = timeToMinutes(endTimeStr);
-      if (reqEnd <= reqStart) return { maxUsed: 0, isValidTime: false };
-
-      const dayBookings = STATE.reservations.filter(r => r.date === dateStr && r.id !== ignoreId);
-      let maxConcurrent = 0;
-
-      for (let t = reqStart; t < reqEnd; t++) {
-        let currentUsed = 0;
-        dayBookings.forEach(r => {
-          if (t >= timeToMinutes(r.startTime) && t < timeToMinutes(r.endTime)) {
-            currentUsed += parseInt(r.quantity);
-          }
-        });
-        if (currentUsed > maxConcurrent) maxConcurrent = currentUsed;
-      }
-      return { maxUsed: maxConcurrent, isValidTime: true };
-    }
-
-    function validateStockInModal() {
-      const dateStr = document.getElementById('inputDate').value;
-      const startStr = document.getElementById('inputStartTime').value;
-      const endStr = document.getElementById('inputEndTime').value;
-      const qty = parseInt(document.getElementById('inputQty').value) || 0;
-      const editId = document.getElementById('inputEditId').value;
-      const badge = document.getElementById('stockCheckBadge');
-      const submitBtn = document.getElementById('btnSaveBooking');
-
-      if (!dateStr || !startStr || !endStr) {
-        badge.innerText = "Informe o horário";
-        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600";
-        return;
-      }
-
-      // Exceção para edição de agendamento já iniciado:
-      // Permite manter o horário de início original e validar o novo horário de término
-      const existingBooking = editId ? STATE.allReservations.find(r => r.id === editId) : null;
-      const isEditingOngoing = existingBooking &&
-        existingBooking.date === dateStr &&
-        existingBooking.startTime === startStr &&
-        !isPastDateTime(dateStr, endStr);
-
-      if (!STATE.isAdmin && !isEditingOngoing && isPastDateTime(dateStr, startStr)) {
-        badge.innerText = "Horário já passou";
-        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
-        submitBtn.disabled = true;
-        return;
-      }
-
-      if (!STATE.isAdmin && isPastDateTime(dateStr, endStr)) {
-        badge.innerText = "Término já passou";
-        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
-        submitBtn.disabled = true;
-        return;
-      }
-
-      const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startStr, endStr, editId);
-      if (!isValidTime) {
-        badge.innerText = "Horário Inválido";
-        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
-        submitBtn.disabled = true;
-        return;
-      }
-
-      const currentStock = getCurrentStock();
-      const available = currentStock - maxUsed;
-
-      if (qty > available) {
-        badge.innerText = `Indisponível! Restam ${available}`;
-        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700";
-        submitBtn.disabled = true;
-      } else {
-        badge.innerText = `Livre: ${available} de ${currentStock}`;
-        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700";
-        submitBtn.disabled = false;
-      }
-    }
-
-    function openBookingModal(defaultStart = null, defaultDate = null, bookingToEdit = null) {
-      const targetDateCheck = bookingToEdit ? bookingToEdit.date : (defaultDate || formatDateIso(STATE.currentDate));
-      
-      // Se não for edição e não for Admin, bloqueia abertura para datas/horas passadas
-      if (!bookingToEdit && !STATE.isAdmin) {
-        if (isPastDateTime(targetDateCheck, defaultStart)) {
-          showToast("Não é permitido agendar para datas ou horários que já passaram.", false);
-          return;
-        }
-      }
-
-      document.getElementById('formBooking').reset();
-      const recurrenceBox = document.getElementById('recurrenceBox');
-      const deviceLabel = STATE.deviceType === 'tablet' ? 'Tablets' : 'Chromebooks';
-      const inputDateEl = document.getElementById('inputDate');
-      const inputPinEl = document.getElementById('inputPin');
-      const pinLabelEl = document.getElementById('pinLabel');
-      const pinHelperEl = document.getElementById('pinHelperText');
-
-      if (!STATE.isAdmin) {
-        inputDateEl.min = formatDateIso(new Date());
-      } else {
-        inputDateEl.removeAttribute('min');
-      }
-
-      if (bookingToEdit) {
-        document.getElementById('modalBookingTitle').innerText = `Editar Agendamento (${deviceLabel})`;
-        document.getElementById('inputEditId').value = bookingToEdit.id;
-        document.getElementById('inputProf').value = bookingToEdit.professor;
-        document.getElementById('inputSala').value = bookingToEdit.sala;
-        document.getElementById('inputTurma').value = bookingToEdit.turma;
-        inputDateEl.value = bookingToEdit.date;
-        document.getElementById('inputStartTime').value = bookingToEdit.startTime;
-        document.getElementById('inputEndTime').value = bookingToEdit.endTime;
-        document.getElementById('inputQty').value = bookingToEdit.quantity;
-
-        // PIN opcional na edição
-        inputPinEl.value = "";
-        inputPinEl.required = false;
-        pinLabelEl.innerText = "Alterar PIN de Segurança (Opcional)";
-        pinHelperEl.innerText = "Deixe em branco para manter o PIN original ou digite 4 dígitos para substituí-lo.";
-
-        recurrenceBox.classList.add('hidden');
-      } else {
-        recurrenceBox.classList.remove('hidden');
-        document.getElementById('inputRecurrenceType').value = 'none';
-        document.getElementById('recurrencePeriodBox').classList.add('hidden');
-        document.getElementById('recurrenceHelpText').classList.add('hidden');
-        document.getElementById('modalBookingTitle').innerText = `Novo Agendamento - ${deviceLabel}`;
-        document.getElementById('inputEditId').value = "";
-
-        const todayIso = formatDateIso(new Date());
-        const targetDate = (!STATE.isAdmin && targetDateCheck < todayIso) ? todayIso : targetDateCheck;
-        inputDateEl.value = targetDate;
-
-        const smartStart = defaultStart || getSmartDefaultTime(targetDate);
-        document.getElementById('inputStartTime').value = smartStart;
-        const startMin = timeToMinutes(smartStart);
-        const endMin = Math.min(startMin + 50, END_HOUR * 60);
-        document.getElementById('inputEndTime').value = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
-        document.getElementById('inputQty').value = 25;
-
-        inputPinEl.value = "";
-        inputPinEl.required = true;
-        pinLabelEl.innerText = "PIN de Segurança (4 dígitos) *";
-        pinHelperEl.innerText = "Será salvo de forma criptografada (SHA-256) para sua privacidade.";
-      }
-
-      document.getElementById('modalBooking').classList.remove('hidden');
-      validateStockInModal();
-    }
-
-    function closeBookingModal() {
-      document.getElementById('modalBooking').classList.add('hidden');
-    }
-
-    function generateRecurrenceDates(startDateStr, type, periodVal) {
-      const dates = [];
-      const baseDate = new Date(startDateStr + 'T00:00:00');
-      const year = baseDate.getFullYear();
-      const endOfYear = new Date(year, 11, 31, 23, 59, 59);
-      let maxOccurrences = 52;
-      let isUntilEndOfYear = (periodVal === 'end_of_year');
-
-      if (!isUntilEndOfYear) {
-        maxOccurrences = parseInt(periodVal) || 4;
-      }
-
-      let current = new Date(baseDate);
-      if (type === 'daily_workdays') {
-        let count = 0;
-        let limitDays = isUntilEndOfYear ? 365 : maxOccurrences * 5;
-        while (count < limitDays && current <= endOfYear) {
-          const day = current.getDay();
-          if (day !== 0 && day !== 6) {
-            dates.push(formatDateIso(current));
-            count++;
-            if (!isUntilEndOfYear && count >= maxOccurrences * 5) break;
-          }
-          current.setDate(current.getDate() + 1);
-        }
-      } else if (type === 'weekly') {
-        let count = 0;
-        while (count < maxOccurrences && current <= endOfYear) {
-          dates.push(formatDateIso(current));
-          count++;
-          current.setDate(current.getDate() + 7);
-        }
-      } else if (type === 'biweekly') {
-        let count = 0;
-        while (count < maxOccurrences && current <= endOfYear) {
-          dates.push(formatDateIso(current));
-          count++;
-          current.setDate(current.getDate() + 14);
-        }
-      } else if (type === 'monthly') {
-        let count = 0;
-        while (count < maxOccurrences && current <= endOfYear) {
-          dates.push(formatDateIso(current));
-          count++;
-          current.setMonth(current.getMonth() + 1);
-        }
-      }
-      return dates;
-    }
-
-    // SALVA RESERVAS E REGISTRA NO HISTÓRICO PERMANENTE
-    async function saveBooking() {
-      const editId = document.getElementById('inputEditId').value;
-      const baseDate = document.getElementById('inputDate').value;
-      const startTime = document.getElementById('inputStartTime').value;
-      const endTime = document.getElementById('inputEndTime').value;
-      const quantity = parseInt(document.getElementById('inputQty').value);
-      const recurrenceType = document.getElementById('inputRecurrenceType').value;
-      const recurrencePeriod = document.getElementById('inputRecurrenceCount').value;
-
-      const existingCheck = editId ? STATE.allReservations.find(r => r.id === editId) : null;
-      const isEditingOngoing = existingCheck &&
-        existingCheck.date === baseDate &&
-        existingCheck.startTime === startTime &&
-        !isPastDateTime(baseDate, endTime);
-
-      if (!STATE.isAdmin && ((!isEditingOngoing && isPastDateTime(baseDate, startTime)) || isPastDateTime(baseDate, endTime))) {
-        alert("Não é permitido criar ou mover agendamentos para datas ou horários anteriores ao momento atual.");
-        return;
-      }
-
-      let targetDates = [baseDate];
-      if (!editId && recurrenceType !== 'none') {
-        targetDates = generateRecurrenceDates(baseDate, recurrenceType, recurrencePeriod);
-      }
-
-      const currentStock = getCurrentStock();
-      for (let dateStr of targetDates) {
-        const { maxUsed, isValidTime } = getPeakUsageInInterval(dateStr, startTime, endTime, editId);
-        if (!isValidTime || (currentStock - maxUsed) < quantity) {
-          const dateFormatted = new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
-          const deviceLabel = STATE.deviceType === 'tablet' ? 'Tablets' : 'Chromebooks';
-          alert(`Não há ${deviceLabel} suficientes na data ${dateFormatted}! O agendamento foi cancelado.`);
-          return;
-        }
-      }
-
-      const professor = document.getElementById('inputProf').value.trim();
-      const sala = document.getElementById('inputSala').value.trim();
-      const turma = document.getElementById('inputTurma').value.trim();
-      const pinRaw = document.getElementById('inputPin').value.trim();
-
-      let pinHash = "";
-      let existingBooking = existingCheck;
-
-      if (editId) {
-        if (pinRaw.length === 4) {
-          pinHash = await hashText(pinRaw);
-        } else if (pinRaw.length > 0 && pinRaw.length < 4) {
-          alert("Se desejar alterar o PIN, digite exatamente 4 números.");
-          return;
-        } else {
-          pinHash = existingBooking ? (existingBooking.pinHash || "") : "";
-        }
-      } else {
-        if (pinRaw.length !== 4) {
-          alert("O PIN de segurança deve conter 4 dígitos numéricos.");
-          return;
-        }
-        pinHash = await hashText(pinRaw);
-      }
-
-      const groupId = editId
-        ? (existingBooking ? (existingBooking.groupId || null) : null)
-        : (targetDates.length > 1 ? 'group-' + Date.now() : null);
-
-      targetDates.forEach(dateStr => {
-        const bookingData = {
-          professor,
-          sala,
-          turma,
-          date: dateStr,
-          startTime,
-          endTime,
-          quantity,
-          pinHash,
-          groupId,
-          deviceType: STATE.deviceType
-        };
-
-        if (editId && !pinRaw && existingBooking && !existingBooking.pinHash && existingBooking.pin) {
-          bookingData.pin = existingBooking.pin;
-        }
-
-        if (STATE.dbConnected && dbRef) {
-          if (editId) {
-            dbRef.child(editId).update(bookingData);
-            recordHistoryEntry(editId, bookingData, 'active');
-          } else {
-            const newRef = dbRef.push(bookingData);
-            recordHistoryEntry(newRef.key, bookingData, 'active');
-          }
-        } else {
-          if (editId) {
-            const idx = STATE.allReservations.findIndex(r => r.id === editId);
-            if (idx !== -1) STATE.allReservations[idx] = { id: editId, ...bookingData };
-            recordHistoryEntry(editId, bookingData, 'active');
-          } else {
-            const newId = 'res-' + Date.now() + Math.random().toString(36).substr(2, 4);
-            STATE.allReservations.push({ id: newId, ...bookingData });
-            recordHistoryEntry(newId, bookingData, 'active');
-          }
-        }
-      });
-
-      if (!STATE.dbConnected) {
-        localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
-      }
-      updateDeviceUI();
-      showToast(editId ? "Agendamento atualizado!" : (targetDates.length > 1 ? `${targetDates.length} agendamentos recorrentes criados!` : "Agendamento salvo!"));
-      closeBookingModal();
-    }
-
-    function openDetailsModal(bookingId) {
-      const booking = STATE.allReservations.find(r => r.id === bookingId);
-      if (!booking) return;
-      STATE.selectedBookingId = bookingId;
-      document.getElementById('detailProf').innerText = booking.professor;
-      document.getElementById('detailTime').innerText = `${booking.startTime} às ${booking.endTime}`;
-      document.getElementById('detailDate').innerText = new Date(booking.date + 'T00:00:00').toLocaleDateString('pt-BR');
-      document.getElementById('detailLocation').innerText = `${booking.sala} (${booking.turma})`;
-      const emoji = (booking.deviceType || 'chromebook') === 'tablet' ? '📱' : '💻';
-      document.getElementById('detailQty').innerText = `${emoji} ${booking.quantity} aparelhos`;
-      document.getElementById('modalDetails').classList.remove('hidden');
-    }
-
-    function closeDetailsModal() {
-      document.getElementById('modalDetails').classList.add('hidden');
-      STATE.selectedBookingId = null;
-    }
-
-    async function handleEditFromDetails() {
-      const booking = STATE.allReservations.find(r => r.id === STATE.selectedBookingId);
-      if (!booking) return;
-
-      if (STATE.isAdmin) {
-        closeDetailsModal();
-        openBookingModal(null, null, booking);
-        return;
-      }
-
-      const userPin = prompt("Digite o PIN de 4 dígitos cadastrado nesta reserva:");
-      if (!userPin) return;
-      const userPinHash = await hashText(userPin);
-
-      if (booking.pinHash && userPinHash === booking.pinHash) {
-        closeDetailsModal();
-        openBookingModal(null, null, booking);
-      } else if (booking.pin && userPin === booking.pin) {
-        closeDetailsModal();
-        openBookingModal(null, null, booking);
-      } else {
-        alert("PIN incorreto!");
-      }
-    }
-
-    async function handleDeleteFromDetails() {
-      const booking = STATE.allReservations.find(r => r.id === STATE.selectedBookingId);
-      if (!booking) return;
-
-      if (STATE.isAdmin) {
-        openCancelModal(booking.id);
-        return;
-      }
-
-      const userPin = prompt("Para cancelar, digite o PIN de 4 dígitos desta reserva:");
-      if (!userPin) return;
-      const userPinHash = await hashText(userPin);
-
-      if (booking.pinHash && userPinHash === booking.pinHash) {
-        openCancelModal(booking.id);
-      } else if (booking.pin && userPin === booking.pin) {
-        openCancelModal(booking.id);
-      } else {
-        alert("PIN incorreto!");
-      }
-    }
-
-    function openCancelModal(bookingId) {
-      const booking = STATE.allReservations.find(r => r.id === bookingId);
-      if (!booking) return;
-      pendingCancelBookingId = bookingId;
-      const futureBtn = document.getElementById('btnCancelFutureSeries');
-      const textEl = document.getElementById('confirmCancelText');
-
-      if (booking.groupId) {
-        futureBtn.classList.remove('hidden');
-        textEl.innerText = `A reserva de ${booking.professor} faz parte de uma série RECORRENTE. Escolha uma das opções abaixo:`;
-      } else {
-        futureBtn.classList.add('hidden');
-        textEl.innerText = `Tem certeza que deseja cancelar a reserva de ${booking.professor}?`;
-      }
-      document.getElementById('modalConfirmCancel').classList.remove('hidden');
-    }
-
-    function closeCancelModal() {
-      document.getElementById('modalConfirmCancel').classList.add('hidden');
-      pendingCancelBookingId = null;
-    }
-
-    function deleteBookingData(id, scope = 'single') {
-      const targetBooking = STATE.allReservations.find(r => r.id === id);
-      if (!targetBooking) return;
-
-      let toDeleteIds = [id];
-      if (scope === 'future' && targetBooking.groupId) {
-        toDeleteIds = STATE.allReservations
-          .filter(r => r.groupId === targetBooking.groupId && r.date >= targetBooking.date)
-          .map(r => r.id);
-      }
-
-      // Marca como excluído no histórico permanente antes de apagar da agenda
-      toDeleteIds.forEach(delId => {
-        const item = STATE.allReservations.find(r => r.id === delId);
-        if (item) recordHistoryEntry(delId, item, 'deleted');
-      });
-
-      if (STATE.dbConnected && dbRef) {
-        toDeleteIds.forEach(delId => {
-          dbRef.child(delId).remove();
-        });
-        showToast(`${toDeleteIds.length} reserva(s) cancelada(s) na nuvem!`);
-      } else {
-        STATE.allReservations = STATE.allReservations.filter(r => !toDeleteIds.includes(r.id));
-        localStorage.setItem('chromebook_reservations', JSON.stringify(STATE.allReservations));
-        showToast(`${toDeleteIds.length} reserva(s) removida(s) localmente!`, false);
-        updateDeviceUI();
-      }
-    }
-
-    // ATUALIZA O INDICADOR DO MOMENTO ATUAL (TEMPO REAL)
     function updateLiveUsageStats() {
       const now = new Date();
       const todayStr = formatDateIso(now);
@@ -2111,10 +2715,7 @@
         nowMinutes < timeToMinutes(r.endTime)
       );
 
-      let usedNow = 0;
-      let latestEndMinutes = 0;
-      let latestEndStr = "";
-
+      let usedNow = 0, latestEndMinutes = 0, latestEndStr = "";
       activeBookings.forEach(r => {
         usedNow += parseInt(r.quantity) || 0;
         const endM = timeToMinutes(r.endTime);
@@ -2139,9 +2740,7 @@
         barEl.style.width = `${pct}%`;
         barEl.className = pct >= 100
           ? "bg-rose-500 h-2 rounded-full transition-all duration-300"
-          : (pct > 50
-            ? "bg-amber-500 h-2 rounded-full transition-all duration-300"
-            : "bg-emerald-500 h-2 rounded-full transition-all duration-300");
+          : (pct > 50 ? "bg-amber-500 h-2 rounded-full transition-all duration-300" : "bg-emerald-500 h-2 rounded-full transition-all duration-300");
       }
 
       if (releaseEl) {
@@ -2149,11 +2748,9 @@
           const earliestEnd = activeBookings.reduce((min, r) =>
             timeToMinutes(r.endTime) < timeToMinutes(min) ? r.endTime : min, activeBookings[0].endTime
           );
-          if (earliestEnd !== latestEndStr) {
-            releaseEl.innerHTML = `<i class="fa-regular fa-clock text-amber-600"></i> <span>Ocupados até <strong>${earliestEnd}</strong> (todos livres às <strong>${latestEndStr}</strong>)</span>`;
-          } else {
-            releaseEl.innerHTML = `<i class="fa-regular fa-clock text-amber-600"></i> <span>Ocupados até às <strong>${latestEndStr}</strong></span>`;
-          }
+          releaseEl.innerHTML = earliestEnd !== latestEndStr
+            ? `<i class="fa-regular fa-clock text-amber-600"></i> <span>Ocupados até <strong>${earliestEnd}</strong> (todos livres às <strong>${latestEndStr}</strong>)</span>`
+            : `<i class="fa-regular fa-clock text-amber-600"></i> <span>Ocupados até às <strong>${latestEndStr}</strong></span>`;
         } else {
           releaseEl.innerHTML = `<i class="fa-regular fa-clock text-emerald-600"></i> <span>Todos os aparelhos livres no momento.</span>`;
         }
@@ -2170,6 +2767,7 @@
       else if (STATE.currentView === 'list') renderListView(container, dateStr);
     }
 
+    // Visão Diária (Grade de Horas + Linha do Tempo + Cartões com Tons de Azul)
     function renderDayGrid(container, dateStr) {
       let filtered = STATE.reservations.filter(r => r.date === dateStr);
       if (STATE.filterQuery) {
@@ -2185,12 +2783,16 @@
       const isPastDay = dateStr < todayIso;
       const isToday = dateStr === todayIso;
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      const holiday = getHolidayInfo(dateStr);
 
       let html = `
         <div class="flex-1 flex flex-col h-full overflow-hidden">
           <div class="sticky top-0 bg-white border-b border-slate-200 z-20 px-3 md:px-6 py-2.5 flex items-center justify-between shadow-sm">
             <h2 class="text-xs md:text-sm font-bold text-slate-800">${STATE.currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
-            ${isPastDay && !STATE.isAdmin ? '<span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md"><i class="fa-solid fa-lock mr-1"></i>Data encerrada</span>' : ''}
+            ${holiday
+              ? `<span class="text-[10px] font-bold text-rose-700 bg-rose-100 border border-rose-200 px-2.5 py-0.5 rounded-md"><i class="fa-solid fa-calendar-xmark mr-1"></i>${holiday.type}: ${holiday.name}</span>`
+              : (isPastDay && !STATE.isAdmin ? '<span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md"><i class="fa-solid fa-lock mr-1"></i>Data encerrada</span>' : '')
+            }
           </div>
           <div class="flex-1 overflow-y-auto relative flex">
             <div class="w-12 md:w-16 bg-slate-50 border-r border-slate-200 shrink-0 text-slate-400 font-mono text-[10px] md:text-xs select-none">
@@ -2199,7 +2801,7 @@
       for (let h = START_HOUR; h < END_HOUR; h++) {
         const slotEndMin = (h + 1) * 60;
         const isPastHour = !STATE.isAdmin && (isPastDay || (isToday && slotEndMin <= nowMinutes));
-        html += `<div class="h-[60px] border-b border-slate-200 pr-1 md:pr-2 pt-1 text-right font-semibold ${isPastHour ? 'opacity-40' : ''}">${String(h).padStart(2, '0')}:00</div>`;
+        html += `<div class="h-[60px] border-b border-slate-200 pr-1 md:pr-2 pt-1 text-right font-semibold ${isPastHour || holiday ? 'opacity-40' : ''}">${String(h).padStart(2, '0')}:00</div>`;
       }
 
       html += `</div><div class="flex-1 relative bg-white">`;
@@ -2210,7 +2812,14 @@
         const slotEndMin = (h + 1) * 60;
         const isHourCompletelyPast = !STATE.isAdmin && (isPastDay || (isToday && slotEndMin <= nowMinutes));
 
-        if (isHourCompletelyPast) {
+        if (holiday && !STATE.isAdmin) {
+          html += `
+            <div class="h-[60px] border-b border-rose-200/70 holiday-slot flex items-center justify-end pr-3 select-none"
+                 title="${holiday.type}: ${holiday.name}">
+              <span class="text-[10px] text-rose-400 font-medium italic">${holiday.name}</span>
+            </div>
+          `;
+        } else if (isHourCompletelyPast) {
           html += `
             <div class="h-[60px] border-b border-slate-200/70 past-slot flex items-center justify-end pr-3 select-none"
                  title="Horário encerrado">
@@ -2227,7 +2836,7 @@
         }
       }
 
-      // FAIXA DESFOCADA EXATA ATÉ O SEGUNDO ATUAL + LINHA DE HORÁRIO ATUAL ALINHADA
+      // Faixa desfocada até o segundo atual + Linha vermelha alinhada
       if (isToday) {
         const startMinutes = START_HOUR * 60;
         const endMinutes = END_HOUR * 60;
@@ -2238,9 +2847,7 @@
           const cappedMinutes = Math.min(exactMinutes, endMinutes);
           const pastHeightPx = ((cappedMinutes - startMinutes) / 60) * 60;
           if (!STATE.isAdmin) {
-            html += `
-              <div class="absolute left-0 right-0 top-0 past-slot pointer-events-none z-10" style="height: ${pastHeightPx}px;"></div>
-            `;
+            html += `<div class="absolute left-0 right-0 top-0 past-slot pointer-events-none z-10" style="height: ${pastHeightPx}px;"></div>`;
           }
         }
         if (exactMinutes >= startMinutes && exactMinutes <= endMinutes) {
@@ -2270,13 +2877,13 @@
         const widthPct = 95 / item.totalColumns;
         const leftPct = 1.5 + (item.column * widthPct);
 
-        // Aplica desfoque nos agendamentos que já passaram
         const isEventPast = isPastDay || (isToday && endMin <= nowMinutes);
+        const colorPair = getProfessorColorClasses(r.professor);
 
         html += `
           <div onclick="openDetailsModal('${r.id}')"
                title="${r.professor} (${r.startTime}-${r.endTime} • ${r.sala})${isEventPast ? ' [Encerrado]' : ''}"
-               class="absolute rounded-md ${isCompact ? 'px-1.5 py-0 flex items-center' : 'p-1.5 md:p-2'} border shadow-sm event-card ${isEventPast ? 'past-event-card' : ''} bg-blue-600 text-white border-blue-700 cursor-pointer overflow-hidden z-20 box-border"
+               class="absolute rounded-md ${isCompact ? 'px-1.5 py-0 flex items-center' : 'p-1.5 md:p-2'} border shadow-sm event-card ${isEventPast ? 'past-event-card' : ''} ${colorPair.bg} text-white ${colorPair.border} cursor-pointer overflow-hidden z-20 box-border"
                style="top: ${topPx}px; height: ${heightPx}px; left: ${leftPct}%; width: ${widthPct - 1}%;">
             ${isCompact ? `
               <div class="flex justify-between items-center gap-1 w-full leading-none">
@@ -2327,6 +2934,7 @@
       return results.map(r => ({ ...r, totalColumns: totalCols }));
     }
 
+    // Visão Semanal
     function renderWeekGrid(container) {
       const base = new Date(STATE.currentDate.getFullYear(), STATE.currentDate.getMonth(), STATE.currentDate.getDate());
       const dayOfWeek = base.getDay();
@@ -2352,11 +2960,14 @@
       `;
 
       weekDates.forEach(d => {
-        const isToday = formatDateIso(d) === todayIso;
+        const dStr = formatDateIso(d);
+        const isToday = dStr === todayIso;
+        const hol = getHolidayInfo(dStr);
         html += `
-          <div class="px-2 border-r border-slate-200 last:border-r-0 ${isToday ? 'text-blue-600 font-extrabold' : ''}">
+          <div class="px-2 border-r border-slate-200 last:border-r-0 ${isToday ? 'text-blue-600 font-extrabold' : (hol ? 'text-rose-600' : '')}">
             <div class="uppercase text-[10px] text-slate-400">${d.toLocaleDateString('pt-BR', { weekday: 'short' })}</div>
             <div class="text-xs">${d.getDate()}/${d.getMonth() + 1}</div>
+            ${hol ? `<div class="text-[9px] font-bold text-rose-600 truncate">${hol.name}</div>` : ''}
           </div>
         `;
       });
@@ -2366,6 +2977,7 @@
       const emoji = STATE.deviceType === 'tablet' ? '📱' : '💻';
       weekDates.forEach(d => {
         const dateStr = formatDateIso(d);
+        const hol = getHolidayInfo(dateStr);
         const isPastDay = !STATE.isAdmin && dateStr < todayIso;
         let dayBookings = STATE.reservations.filter(r => r.date === dateStr);
 
@@ -2376,14 +2988,15 @@
           );
         }
 
-        html += `<div class="space-y-2 ${isPastDay ? 'opacity-65' : ''}">`;
+        html += `<div class="space-y-2 ${isPastDay || hol ? 'opacity-65' : ''}">`;
         dayBookings.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)).forEach(r => {
           const isCardPast = dateStr < todayIso || (dateStr === todayIso && timeToMinutes(r.endTime) <= nowMinutes);
+          const colorPair = getProfessorColorClasses(r.professor);
           html += `
-            <div onclick="openDetailsModal('${r.id}')" class="bg-white border border-slate-200 rounded-xl p-2 shadow-sm hover:shadow transition cursor-pointer space-y-1 ${isCardPast ? 'past-event-card' : ''}">
+            <div onclick="openDetailsModal('${r.id}')" class="bg-white border-l-4 ${colorPair.border} border border-slate-200 rounded-xl p-2 shadow-sm hover:shadow transition cursor-pointer space-y-1 ${isCardPast ? 'past-event-card' : ''}">
               <div class="flex justify-between items-center text-[10px] font-bold text-slate-500">
                 <span>${r.startTime}-${r.endTime}</span>
-                <span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-black">${emoji} ${r.quantity}</span>
+                <span class="${colorPair.bg} text-white px-1.5 py-0.5 rounded font-black">${emoji} ${r.quantity}</span>
               </div>
               <h5 class="font-bold text-xs text-slate-800 truncate">${r.professor}</h5>
               <p class="text-[10px] text-slate-500 truncate">${r.sala} • ${r.turma}</p>
@@ -2391,12 +3004,14 @@
           `;
         });
 
-        if (!isPastDay) {
+        if (!isPastDay && !hol) {
           html += `
             <button onclick="openBookingModal(null, '${dateStr}')" class="w-full py-1.5 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-400 hover:border-blue-400 hover:text-blue-600 transition">
               + Agendar
             </button>
           `;
+        } else if (hol) {
+          html += `<div class="text-center text-[10px] font-bold text-rose-500 bg-rose-50 border border-rose-200 rounded-lg py-1.5 px-1">Bloqueado</div>`;
         }
         html += `</div>`;
       });
@@ -2405,6 +3020,7 @@
       container.innerHTML = html;
     }
 
+    // Visão em Lista
     function renderListView(container, dateStr) {
       let filtered = STATE.reservations.filter(r => r.date === dateStr);
       if (STATE.filterQuery) {
@@ -2421,16 +3037,20 @@
       const todayIso = formatDateIso(now);
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
       const isPastDay = !STATE.isAdmin && dateStr < todayIso;
+      const hol = getHolidayInfo(dateStr);
 
       let html = `
         <div class="p-3 sm:p-6 max-w-4xl mx-auto w-full space-y-3">
           <div class="flex justify-between items-center">
             <h3 class="text-sm sm:text-base font-bold text-slate-800">Agendamentos (${filtered.length})</h3>
-            ${!isPastDay ? `
-              <button onclick="openBookingModal(null, '${dateStr}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs shadow hover:bg-blue-700 transition">
-                + Novo
-              </button>
-            ` : `<span class="text-xs font-bold text-slate-400">Data encerrada</span>`}
+            ${hol && !STATE.isAdmin
+              ? `<span class="text-xs font-bold text-rose-600 bg-rose-100 px-2.5 py-1 rounded-lg">${hol.type}: ${hol.name}</span>`
+              : (!isPastDay ? `
+                  <button onclick="openBookingModal(null, '${dateStr}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs shadow hover:bg-blue-700 transition">
+                    + Novo
+                  </button>
+                ` : `<span class="text-xs font-bold text-slate-400">Data encerrada</span>`)
+            }
           </div>
           <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
             <div class="overflow-x-auto">
@@ -2452,13 +3072,14 @@
       } else {
         filtered.forEach(r => {
           const isRowPast = dateStr < todayIso || (dateStr === todayIso && timeToMinutes(r.endTime) <= nowMinutes);
+          const colorPair = getProfessorColorClasses(r.professor);
           html += `
             <tr class="hover:bg-slate-50 transition ${isRowPast ? 'opacity-50' : ''}">
               <td class="py-2.5 px-3 font-bold text-slate-800 whitespace-nowrap">${r.startTime} - ${r.endTime}</td>
-              <td class="py-2.5 px-3 font-bold text-blue-600">${r.professor}</td>
+              <td class="py-2.5 px-3 font-bold text-blue-700">${r.professor}</td>
               <td class="py-2.5 px-3 text-slate-600">${r.sala} (${r.turma})</td>
               <td class="py-2.5 px-3 text-center font-black">
-                <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[11px]">${emoji} ${r.quantity}</span>
+                <span class="${colorPair.bg} text-white px-2 py-0.5 rounded-full text-[11px]">${emoji} ${r.quantity}</span>
               </td>
               <td class="py-2.5 px-3 text-right">
                 <button onclick="openDetailsModal('${r.id}')" class="text-blue-600 hover:text-blue-800 font-bold px-2 py-1 rounded hover:bg-blue-50 transition">
